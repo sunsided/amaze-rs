@@ -2,9 +2,9 @@ mod direction4;
 mod grid_coord_2d;
 mod maze_generator;
 mod recursive_backtracker4;
-mod render_unicode;
 mod room4;
 mod room4_list;
+mod unicode_renderer;
 mod visit_map_2d;
 mod wall4_grid;
 

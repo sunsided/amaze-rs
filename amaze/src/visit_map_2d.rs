@@ -1,6 +1,4 @@
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
-use crate::room4::Wall4;
-use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Default)]
