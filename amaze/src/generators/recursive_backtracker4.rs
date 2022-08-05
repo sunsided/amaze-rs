@@ -111,7 +111,7 @@ impl RecursiveBacktracker4 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::unicode_renderer::UnicodeRenderer;
+    use crate::renderers::{UnicodeRenderStyle, UnicodeRenderer};
 
     #[test]
     fn it_works() {
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(grid.width(), 16);
         assert_eq!(grid.height(), 16);
 
-        let renderer = UnicodeRenderer::new_heavy();
+        let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
         let str = renderer.render(&grid);
         println!("{}", str);
     }

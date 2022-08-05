@@ -1,9 +1,9 @@
 pub mod direction4;
-mod generators;
+pub mod generators;
 mod grid_coord_2d;
+pub mod renderers;
 mod room4;
 mod room4_list;
-mod unicode_renderer;
 mod visit_map_2d;
 mod wall4_grid;
 
