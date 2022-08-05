@@ -86,7 +86,7 @@ fn main() {
             };
             let grid = generator.generate(*width, *height);
             let renderer = UnicodeRenderer::new(style, true);
-            println!("{}", renderer.render(&grid));
+            println!("{}", renderer.render(&grid).trim_end());
             return;
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachable
