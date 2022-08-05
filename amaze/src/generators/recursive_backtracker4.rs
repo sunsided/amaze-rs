@@ -19,10 +19,21 @@ impl Default for RecursiveBacktracker4 {
 }
 
 impl RecursiveBacktracker4 {
+    /// See [MazeGenerator2D::new_random].
+    pub fn new_random() -> Self {
+        Self {
+            rng: StdRng::from_entropy(),
+        }
+    }
+
     /// See [MazeGenerator2D::new_from_seed].
     pub fn new_from_seed(rng_seed: u64) -> Self {
-        Self {
-            rng: StdRng::seed_from_u64(rng_seed),
+        if rng_seed == 0 {
+            Self::new_random()
+        } else {
+            Self {
+                rng: StdRng::seed_from_u64(rng_seed),
+            }
         }
     }
 
@@ -113,10 +124,12 @@ impl RecursiveBacktracker4 {
 }
 
 impl MazeGenerator2D for RecursiveBacktracker4 {
+    fn new_random() -> Self {
+        RecursiveBacktracker4::new_random()
+    }
     fn new_from_seed(rng_seed: u64) -> Self {
         RecursiveBacktracker4::new_from_seed(rng_seed)
     }
-
     fn generate(&self, width: usize, height: usize) -> Wall4Grid {
         self.generate(width, height)
     }
