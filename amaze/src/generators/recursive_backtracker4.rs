@@ -1,9 +1,11 @@
+use crate::generators::MazeGenerator2D;
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
 
+/// A maze generator that implements the Recursive Backtracking algorithm.
 pub struct RecursiveBacktracker4 {
     rng: StdRng,
 }
@@ -17,12 +19,14 @@ impl Default for RecursiveBacktracker4 {
 }
 
 impl RecursiveBacktracker4 {
+    /// See [MazeGenerator2D::new_from_seed].
     pub fn new_from_seed(rng_seed: u64) -> Self {
         Self {
             rng: StdRng::seed_from_u64(rng_seed),
         }
     }
 
+    /// See [MazeGenerator2D::generate].
     pub fn generate(&self, width: usize, height: usize) -> Wall4Grid {
         let mut cells = Wall4Grid::new(width, height);
         let mut visit_map = VisitMap2D::new_like(&cells);
@@ -105,6 +109,16 @@ impl RecursiveBacktracker4 {
 
         let selected = list[value % list.len()];
         Some(selected)
+    }
+}
+
+impl MazeGenerator2D for RecursiveBacktracker4 {
+    fn new_from_seed(rng_seed: u64) -> Self {
+        RecursiveBacktracker4::new_from_seed(rng_seed)
+    }
+
+    fn generate(&self, width: usize, height: usize) -> Wall4Grid {
+        self.generate(width, height)
     }
 }
 
