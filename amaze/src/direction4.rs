@@ -15,7 +15,7 @@ impl Direction4 {
 
     #[inline]
     pub fn contains(&self, other: Direction4) -> bool {
-        self.0 & other.0 == other.0
+        &self.0 & other.0 == other.0
     }
 
     #[inline]
@@ -73,7 +73,7 @@ impl Add for Direction4 {
 impl AddAssign for Direction4 {
     #[inline]
     fn add_assign(&mut self, rhs: Self) {
-        self.0 = self.0 | rhs.0;
+        self.0 = &self.0 | rhs.0;
     }
 }
 
@@ -89,7 +89,7 @@ impl Sub for Direction4 {
 impl SubAssign for Direction4 {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
-        self.0 = (self.0 & !rhs.0) & Direction4::MASK;
+        self.0 = (&self.0 & !rhs.0) & Direction4::MASK;
     }
 }
 
@@ -120,7 +120,7 @@ impl Iterator for Direction4Iterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.step < 4 {
-            let current = Direction4(1 << self.step);
+            let current = Direction4(1 << &self.step);
             self.step += 1;
             if self.direction.contains(current) {
                 return Some(current);

@@ -1,7 +1,6 @@
 mod direction4;
+mod generators;
 mod grid_coord_2d;
-mod maze_generator;
-mod recursive_backtracker4;
 mod room4;
 mod room4_list;
 mod unicode_renderer;
