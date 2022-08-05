@@ -1,4 +1,4 @@
-mod direction4;
+pub mod direction4;
 mod generators;
 mod grid_coord_2d;
 mod room4;
