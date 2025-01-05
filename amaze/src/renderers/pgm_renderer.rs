@@ -3,6 +3,7 @@ use crate::room4::Wall4;
 use crate::wall4_grid::Wall4Grid;
 use std::ops::Index;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ImageFormat {
     /// Portable Pixmap (black white)
     PPM,

@@ -28,14 +28,14 @@ impl VisitMap2D {
         if coords.x >= self.width || coords.y >= self.height {
             return None;
         }
-        return Some(&self[coords]);
+        Some(&self[coords])
     }
 
     pub fn get_mut(&mut self, coords: GridCoord2D) -> Option<&mut bool> {
         if coords.x >= self.width || coords.y >= self.height {
             return None;
         }
-        return Some(&mut self[coords]);
+        Some(&mut self[coords])
     }
 
     pub fn unvisited_neighbors(&self, coords: GridCoord2D) -> Vec<GridCoord2D> {

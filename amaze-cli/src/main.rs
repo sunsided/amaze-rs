@@ -1,5 +1,5 @@
 use amaze::generators::RecursiveBacktracker4;
-use amaze::renderers::{ImageFormat, ImageRenderer, UnicodeRenderStyle, UnicodeRenderer};
+use amaze::renderers::{ImageRenderer, RenderStyle, UnicodeRenderer};
 use clap::{value_parser, Arg, ArgAction, Command};
 
 fn main() {
@@ -54,6 +54,8 @@ fn main() {
                         .long("style")
                         .help("selects the style to use")
                         .display_order(4)
+                        .value_parser(value_parser!(RenderStyle))
+                        .default_value("heavy")
                         .action(ArgAction::Set),
                 ),
         )
@@ -66,12 +68,12 @@ fn main() {
             let height = gen_matches.get_one::<usize>("height").unwrap_or(&8usize);
 
             let default_algorithm = String::from("recursive-backtracker");
-            let default_style = String::from("heavy");
+            let default_style = RenderStyle::default();
             let algorithm = gen_matches
                 .get_one::<String>("algorithm")
                 .unwrap_or(&default_algorithm);
             let style = gen_matches
-                .get_one::<String>("style")
+                .get_one::<RenderStyle>("style")
                 .unwrap_or(&default_style);
             let generator = match algorithm.as_str() {
                 "recursive-backtracker" => RecursiveBacktracker4::new_from_seed(seed),
@@ -79,31 +81,16 @@ fn main() {
             };
 
             let grid = generator.generate(*width, *height);
-
-            if let Some(style) = match style.as_str() {
-                "heavy" => Some(UnicodeRenderStyle::Heavy),
-                "thin" => Some(UnicodeRenderStyle::Thin),
-                "double" => Some(UnicodeRenderStyle::Double),
-                "hex" => Some(UnicodeRenderStyle::Hexadecimal),
-                _ => None,
-            } {
-                let renderer = UnicodeRenderer::new(style, true);
-                println!("{}", renderer.render(&grid).trim_end());
-                return;
+            match style {
+                RenderStyle::Unicode(style) => {
+                    let renderer = UnicodeRenderer::new(*style, true);
+                    println!("{}", renderer.render(&grid).trim_end());
+                }
+                RenderStyle::Image(style) => {
+                    let renderer = ImageRenderer::new(*style);
+                    println!("{}", renderer.render(&grid).trim_end());
+                }
             }
-
-            if let Some(style) = match style.as_str() {
-                "ppm" => Some(ImageFormat::PPM),
-                "pbm" => Some(ImageFormat::PBM),
-                _ => None,
-            } {
-                let renderer = ImageRenderer::new(style);
-                println!("{}", renderer.render(&grid).trim_end());
-                return;
-            }
-
-            eprintln!("Unknown style: {}", style);
-            return;
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachable
     }

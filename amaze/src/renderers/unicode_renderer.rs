@@ -4,7 +4,7 @@ use crate::wall4_grid::Wall4Grid;
 
 /// See [UnicodeRenderStyle::Thin] for a usage example.
 #[allow(dead_code)]
-const UNICODE_SET_THIN: &'static [char] = &[
+const UNICODE_SET_THIN: &[char] = &[
     ' ',        //   0b0000 - none
     '\u{2575}', // ╵ 0b0001 -    N
     '\u{2577}', // ╷ 0b0010 -   S
@@ -25,7 +25,7 @@ const UNICODE_SET_THIN: &'static [char] = &[
 
 /// See [UnicodeRenderStyle::Double] for a usage example.
 #[allow(dead_code)]
-const UNICODE_SET_DOUBLE: &'static [char] = &[
+const UNICODE_SET_DOUBLE: &[char] = &[
     ' ',        //   0b0000 - none
     '\u{2568}', // ╨ 0b0001 -    N
     '\u{2565}', // ╥ 0b0010 -   S
@@ -46,7 +46,7 @@ const UNICODE_SET_DOUBLE: &'static [char] = &[
 
 /// See [UnicodeRenderStyle::Heavy] for a usage example.
 #[allow(dead_code)]
-const UNICODE_SET_HEAVY: &'static [char] = &[
+const UNICODE_SET_HEAVY: &[char] = &[
     ' ',        //   0b0000 - none
     '\u{2579}', // ╹ 0b0001 -    N
     '\u{257B}', // ╻ 0b0010 -   S
@@ -67,7 +67,7 @@ const UNICODE_SET_HEAVY: &'static [char] = &[
 
 /// See [UnicodeRenderStyle::Hexadecimal] for a usage example.
 #[allow(dead_code)]
-const ASCII_SET_HEX: &'static [char] = &[
+const ASCII_SET_HEX: &[char] = &[
     '0', //   0b0000 - none
     '1', // ╨ 0b0001 -    N
     '2', // ╥ 0b0010 -   S
@@ -86,6 +86,7 @@ const ASCII_SET_HEX: &'static [char] = &[
     'F', // ╬ 0b1111 - WESN
 ];
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UnicodeRenderStyle {
     /// Renders the grid as thin unicode lines.
     ///

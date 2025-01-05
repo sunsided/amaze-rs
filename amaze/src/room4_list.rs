@@ -42,7 +42,7 @@ impl<Tag> Room4List<Tag> {
     /// The index of the newly created room.
     pub fn push_new<F>(&mut self, tag: Tag, f: F) -> RoomIndex
     where
-        F: FnOnce(&mut Room4<Tag>) -> (),
+        F: FnOnce(&mut Room4<Tag>),
     {
         // SAFETY:
         // By increasing the current size of the index by 1,
@@ -117,10 +117,7 @@ impl RoomIndex {
         if value == usize::MAX {
             return None;
         }
-        match NonZeroUsize::new(value + 1) {
-            Some(index) => Some(RoomIndex(index)),
-            None => None,
-        }
+        NonZeroUsize::new(value + 1).map(RoomIndex)
     }
 }
 

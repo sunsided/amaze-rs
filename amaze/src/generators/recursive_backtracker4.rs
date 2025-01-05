@@ -75,7 +75,7 @@ impl RecursiveBacktracker4 {
             // 2. If the current cell has any neighbors which have not been visited,
             //  2.1 Choose randomly one of the unvisited neighbors.
             if let Some(selected_cell) =
-                Self::select_random_unvisited_neighbor(&mut rng, &visit_map, current_cell)
+                Self::select_random_unvisited_neighbor(&mut rng, visit_map, current_cell)
             {
                 // 2.2 Add the current cell to the stack
                 backtrace.push(current_cell);

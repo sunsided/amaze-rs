@@ -265,7 +265,7 @@ impl Iterator for Direction4Iterator {
             }
         }
 
-        return None;
+        None
     }
 }
 

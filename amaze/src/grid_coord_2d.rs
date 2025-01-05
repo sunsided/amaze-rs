@@ -14,34 +14,22 @@ impl GridCoord2D {
 
     #[inline]
     pub fn up(&self) -> Option<Self> {
-        match self.y.checked_sub(1) {
-            Some(y) => Some(Self::new(self.x, y)),
-            None => None,
-        }
+        self.y.checked_sub(1).map(|y| Self::new(self.x, y))
     }
 
     #[inline]
     pub fn down(&self) -> Option<Self> {
-        match self.y.checked_add(1) {
-            Some(y) => Some(Self::new(self.x, y)),
-            None => None,
-        }
+        self.y.checked_add(1).map(|y| Self::new(self.x, y))
     }
 
     #[inline]
     pub fn left(&self) -> Option<Self> {
-        match self.x.checked_sub(1) {
-            Some(x) => Some(Self::new(x, self.y)),
-            None => None,
-        }
+        self.x.checked_sub(1).map(|x| Self::new(x, self.y))
     }
 
     #[inline]
     pub fn right(&self) -> Option<Self> {
-        match self.x.checked_add(1) {
-            Some(x) => Some(Self::new(x, self.y)),
-            None => None,
-        }
+        self.x.checked_add(1).map(|x| Self::new(x, self.y))
     }
 }
 
