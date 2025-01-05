@@ -43,23 +43,23 @@ impl Wall4Grid {
             selected
         );
 
-        let c = self.linearize_coords(current);
-        let s = self.linearize_coords(selected);
+        let cur = self.linearize_coords(current);
+        let sel = self.linearize_coords(selected);
 
         if current.x > selected.x {
-            self.walls[s] -= Wall4::EAST;
-            self.walls[c] -= Wall4::WEST;
+            self.walls[sel] -= Wall4::EAST;
+            self.walls[cur] -= Wall4::WEST;
         } else if current.x < selected.x {
-            self.walls[s] -= Wall4::WEST;
-            self.walls[c] -= Wall4::EAST;
+            self.walls[sel] -= Wall4::WEST;
+            self.walls[cur] -= Wall4::EAST;
         }
 
         if current.y > selected.y {
-            self.walls[s] -= Wall4::SOUTH;
-            self.walls[c] -= Wall4::NORTH;
+            self.walls[sel] -= Wall4::SOUTH;
+            self.walls[cur] -= Wall4::NORTH;
         } else if current.y < selected.y {
-            self.walls[s] -= Wall4::NORTH;
-            self.walls[c] -= Wall4::SOUTH;
+            self.walls[sel] -= Wall4::NORTH;
+            self.walls[cur] -= Wall4::SOUTH;
         }
     }
 

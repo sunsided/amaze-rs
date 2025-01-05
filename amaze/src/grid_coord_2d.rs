@@ -67,7 +67,7 @@ where
         let width = self.width();
         let height = self.height();
 
-        let coords = coords.x * width + coords.y;
+        let coords = coords.y * width + coords.x;
         debug_assert!(coords < width * height);
         coords
     }

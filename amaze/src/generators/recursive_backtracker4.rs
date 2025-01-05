@@ -2,6 +2,7 @@ use crate::generators::MazeGenerator2D;
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
+use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
 
@@ -109,17 +110,13 @@ impl RecursiveBacktracker4 {
         debug_assert!(current_cell.x < visit_map.width());
         debug_assert!(current_cell.y < visit_map.height());
 
-        // Obtain a base value.
-        let value = rng.next_u64() as usize;
-
         // Obtain neighbors.
         let list = visit_map.unvisited_neighbors(current_cell);
         if list.is_empty() {
             return None;
         }
 
-        let selected = list[value % list.len()];
-        Some(selected)
+        list.choose(rng).cloned()
     }
 }
 
