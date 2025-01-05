@@ -1,4 +1,4 @@
-use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
+use crate::grid_coord_2d::GridCoord2D;
 use crate::room4::Door4;
 use crate::wall4_grid::Wall4Grid;
 

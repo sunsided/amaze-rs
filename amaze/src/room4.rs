@@ -10,12 +10,12 @@ pub type Door4 = Direction4;
 /// A four-sided room.
 #[derive(Debug)]
 pub struct Room4<Tag = ()> {
-    pub tag: Tag,
     index: RoomIndex,
     north: Option<RoomIndex>,
     south: Option<RoomIndex>,
     east: Option<RoomIndex>,
     west: Option<RoomIndex>,
+    pub tag: Tag,
 }
 
 impl<Tag> Room4<Tag> {
