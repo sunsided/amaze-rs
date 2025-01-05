@@ -37,14 +37,13 @@ impl Default for MyApp {
             pan: egui::Vec2::new(0.0, 0.0),
             dragging: false,
             last_cursor_pos: egui::Pos2::new(0.0, 0.0),
-            prev_available_size: None, // Initialize as None
+            prev_available_size: None,
         }
     }
 }
 
 impl App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
-        // Handle user interactions for panning and zooming
         handle_panning_zooming(ctx, self);
 
         // Side Panel for Controls
@@ -85,7 +84,8 @@ impl App for MyApp {
             ui.label("Width:");
             let width_response = ui.add(
                 egui::DragValue::new(&mut self.width)
-                    .clamp_range(5..=100)
+                    .range(5..=100)
+                    .clamp_existing_to_range(false)
                     .speed(1.0)
                     .prefix(""),
             );
@@ -101,7 +101,8 @@ impl App for MyApp {
             ui.label("Height:");
             let height_response = ui.add(
                 egui::DragValue::new(&mut self.height)
-                    .clamp_range(5..=100)
+                    .range(5..=100)
+                    .clamp_existing_to_range(false)
                     .speed(1.0)
                     .prefix(""),
             );
@@ -146,14 +147,13 @@ impl App for MyApp {
 
             // Allocate the painter with the available size
             let available_size = ui.available_size();
-            let (response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+            let (_response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
 
             // Adjust pan if the available size has changed
             if let Some(old_size) = self.prev_available_size {
                 if old_size != available_size {
                     let delta = available_size - old_size;
-                    // Compensate for the change by adjusting the pan
-                    self.pan += delta / 2.0;
+                    self.pan -= delta / 2.0;
                 }
             }
 
@@ -161,6 +161,8 @@ impl App for MyApp {
             self.prev_available_size = Some(available_size);
 
             // Calculate pan offsets to center the maze
+            // Positive pan.x moves the maze to the right
+            // Positive pan.y moves the maze downward
             let center_x = (available_size.x - total_width) / 2.0 + self.pan.x;
             let center_y = (available_size.y - total_height) / 2.0 + self.pan.y;
 
