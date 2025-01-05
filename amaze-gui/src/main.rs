@@ -142,11 +142,12 @@ impl App for MyApp {
             let cell_size = base_cell_size * self.zoom;
 
             // Determine the total size of the maze
-            let total_width = (maze.width() as f32) * cell_size;
-            let total_height = (maze.height() as f32) * cell_size;
+            let total_maze_width = (maze.width() as f32) * cell_size;
+            let total_maze_height = (maze.height() as f32) * cell_size;
 
             // Allocate the painter with the available size
-            let available_size = ui.available_size();
+            let available_rect = ctx.available_rect();
+            let available_size = available_rect.size();
             let (_response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
 
             // Adjust pan if the available size has changed
@@ -163,8 +164,9 @@ impl App for MyApp {
             // Calculate pan offsets to center the maze
             // Positive pan.x moves the maze to the right
             // Positive pan.y moves the maze downward
-            let center_x = (available_size.x - total_width) / 2.0 + self.pan.x;
-            let center_y = (available_size.y - total_height) / 2.0 + self.pan.y;
+            let panel_center = ctx.available_rect().center();
+            let center_x = panel_center.x - total_maze_width / 2.0 + self.pan.x;
+            let center_y = panel_center.y - total_maze_height / 2.0 + self.pan.y;
 
             // Iterate over each cell and draw walls
             for y in 0..maze.height() {
