@@ -3,16 +3,6 @@ use amaze::preamble::*;
 use eframe::{egui, epaint::Color32, App, Frame, NativeOptions};
 use std::sync::Mutex;
 
-fn main() {
-    let native_options = NativeOptions::default();
-    eframe::run_native(
-        "Maze Renderer",
-        native_options,
-        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
-    )
-    .unwrap();
-}
-
 struct MyApp {
     // Application state
     seed_input: String,
@@ -20,6 +10,11 @@ struct MyApp {
     width: usize,
     height: usize,
     maze: Mutex<Wall4Grid>,
+    // Transformation state
+    zoom: f32,
+    pan: egui::Vec2,
+    dragging: bool,
+    last_cursor_pos: egui::Pos2,
 }
 
 impl Default for MyApp {
@@ -36,12 +31,39 @@ impl Default for MyApp {
             width: initial_width,
             height: initial_height,
             maze: Mutex::new(maze),
+            zoom: 1.0,
+            pan: egui::Vec2::new(0.0, 0.0),
+            dragging: false,
+            last_cursor_pos: egui::Pos2::new(0.0, 0.0),
         }
     }
 }
 
 impl App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut Frame) {
+        // Handle user interactions for panning and zooming
+        let response = ctx.input(|i| i.pointer.hover_pos());
+
+        // Detect if the middle mouse button is pressed
+        if ctx.input(|i| i.pointer.middle_down()) {
+            if let Some(cursor_pos) = ctx.pointer_latest_pos() {
+                if self.dragging {
+                    let delta = cursor_pos - self.last_cursor_pos;
+                    self.pan += delta;
+                }
+                self.dragging = true;
+                self.last_cursor_pos = cursor_pos;
+            }
+        } else {
+            self.dragging = false;
+        }
+
+        // Handle zooming with the mouse wheel
+        let scroll_delta = ctx.input(|i| i.smooth_scroll_delta);
+        let scroll = scroll_delta.y;
+        let zoom_factor = 1.1_f32.powf(scroll / 10.0);
+        self.zoom = (self.zoom * zoom_factor).clamp(0.1, 5.0);
+
         // Side Panel for Controls
         egui::SidePanel::left("controls_panel").show(ctx, |ui| {
             ui.heading("Maze Controls");
@@ -54,15 +76,24 @@ impl App for MyApp {
                     .desired_width(150.0),
             );
 
-            // Update seed and regenerate maze if seed input changes and is valid
+            // Attempt to parse the seed input
             if seed_response.changed() {
-                if let Ok(seed) = self.seed_input.parse::<u64>() {
-                    if seed != self.seed {
-                        self.seed = seed;
-                        let maze_generator = RecursiveBacktracker4::new_from_seed(self.seed);
-                        let new_maze = maze_generator.generate(self.width, self.height);
-                        let mut maze_lock = self.maze.lock().unwrap();
-                        *maze_lock = new_maze;
+                match self.seed_input.parse::<u64>() {
+                    Ok(seed) => {
+                        if seed != self.seed {
+                            self.seed = seed;
+                            let maze_generator = RecursiveBacktracker4::new_from_seed(self.seed);
+                            let new_maze = maze_generator.generate(self.width, self.height);
+                            let mut maze_lock = self.maze.lock().unwrap();
+                            *maze_lock = new_maze;
+                        }
+                    }
+                    Err(_) => {
+                        // Display error message for invalid input
+                        ui.label(
+                            egui::RichText::new("Invalid seed! Please enter a valid u64 number.")
+                                .color(Color32::RED),
+                        );
                     }
                 }
             }
@@ -99,23 +130,11 @@ impl App for MyApp {
                 *maze_lock = new_maze;
             }
 
-            // Button to Regenerate Maze
-            if ui.button("Regenerate Maze").clicked() {
-                if let Ok(seed) = self.seed_input.parse::<u64>() {
-                    if seed != self.seed {
-                        self.seed = seed;
-                    }
-                }
-                let maze_generator = RecursiveBacktracker4::new_from_seed(self.seed);
-                let new_maze = maze_generator.generate(self.width, self.height);
-                let mut maze_lock = self.maze.lock().unwrap();
-                *maze_lock = new_maze;
-            }
-
             ui.separator();
 
             // Instructions
-            ui.label("Adjust the seed, width, or height and click 'Regenerate Maze' to create a new maze.");
+            ui.label("Use the middle mouse button to pan the maze.");
+            ui.label("Use the mouse wheel to zoom in or out.");
         });
 
         // Central Panel for Maze Rendering
@@ -125,17 +144,17 @@ impl App for MyApp {
             // Obtain the maze
             let maze = self.maze.lock().unwrap();
 
-            // Define the size of each cell based on the maze dimensions
-            let max_cell_size: f32 = 40.0;
-            let cell_size = max_cell_size
-                .min(ui.available_width() / maze.width() as f32)
-                .min(ui.available_height() / maze.height() as f32);
+            // Define the base size of each cell
+            let base_cell_size = 30.0;
+
+            // Calculate the scaled cell size based on the zoom level
+            let cell_size = base_cell_size * self.zoom;
 
             // Determine the total size of the maze
             let total_width = (maze.width() as f32) * cell_size;
             let total_height = (maze.height() as f32) * cell_size;
 
-            // Create a scrollable area if the maze is large
+            // Create a painter within a scrollable area
             egui::ScrollArea::both().show(ui, |ui| {
                 // Allocate space for the maze
                 let (response, painter) = ui.allocate_painter(
@@ -143,19 +162,30 @@ impl App for MyApp {
                     egui::Sense::hover(),
                 );
 
+                // Apply pan offset
+                let pan = self.pan;
+
                 // Iterate over each cell and draw walls
                 for y in 0..maze.height() {
                     for x in 0..maze.width() {
                         let coord = GridCoord2D::new(x, y);
                         let wall = maze.get(coord).unwrap();
 
-                        let top_left = egui::pos2(x as f32 * cell_size, y as f32 * cell_size);
-                        let top_right =
-                            egui::pos2((x as f32 + 1.0) * cell_size, y as f32 * cell_size);
-                        let bottom_left =
-                            egui::pos2(x as f32 * cell_size, (y as f32 + 1.0) * cell_size);
-                        let bottom_right =
-                            egui::pos2((x as f32 + 1.0) * cell_size, (y as f32 + 1.0) * cell_size);
+                        // Calculate the position with pan and zoom
+                        let top_left =
+                            egui::pos2(x as f32 * cell_size + pan.x, y as f32 * cell_size + pan.y);
+                        let top_right = egui::pos2(
+                            (x as f32 + 1.0) * cell_size + pan.x,
+                            y as f32 * cell_size + pan.y,
+                        );
+                        let bottom_left = egui::pos2(
+                            x as f32 * cell_size + pan.x,
+                            (y as f32 + 1.0) * cell_size + pan.y,
+                        );
+                        let bottom_right = egui::pos2(
+                            (x as f32 + 1.0) * cell_size + pan.x,
+                            (y as f32 + 1.0) * cell_size + pan.y,
+                        );
 
                         // Optional: Fill cell background for better visuals
                         if (x + y) % 2 == 0 {
@@ -211,4 +241,14 @@ impl App for MyApp {
         // Request a repaint to update the UI continuously
         ctx.request_repaint();
     }
+}
+
+fn main() {
+    let native_options = NativeOptions::default();
+    eframe::run_native(
+        "Maze Renderer",
+        native_options,
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+    )
+    .unwrap();
 }
