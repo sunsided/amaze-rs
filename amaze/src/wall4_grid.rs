@@ -22,14 +22,14 @@ impl Wall4Grid {
         if coords.x >= self.width || coords.y >= self.height {
             return None;
         }
-        return Some(&self[coords]);
+        Some(&self[coords])
     }
 
     pub fn get_mut(&mut self, coords: GridCoord2D) -> Option<&mut Wall4> {
         if coords.x >= self.width || coords.y >= self.height {
             return None;
         }
-        return Some(&mut self[coords]);
+        Some(&mut self[coords])
     }
 
     pub fn remove_wall_between(&mut self, current: GridCoord2D, selected: GridCoord2D) {
@@ -52,17 +52,25 @@ impl Wall4Grid {
             self.walls[c] -= Wall4::SOUTH;
         }
     }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
 }
 
 impl GetCoordinateBounds2D for Wall4Grid {
     #[inline]
     fn width(&self) -> usize {
-        self.width
+        self.width()
     }
 
     #[inline]
     fn height(&self) -> usize {
-        self.height
+        self.height()
     }
 }
 

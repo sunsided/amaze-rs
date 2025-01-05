@@ -1,5 +1,5 @@
 use amaze::generators::RecursiveBacktracker4;
-use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+use amaze::renderers::{ImageFormat, ImageRenderer, UnicodeRenderStyle, UnicodeRenderer};
 use clap::{value_parser, Arg, ArgAction, Command};
 
 fn main() {
@@ -77,16 +77,32 @@ fn main() {
                 "recursive-backtracker" => RecursiveBacktracker4::new_from_seed(seed),
                 _ => unreachable!(),
             };
-            let style = match style.as_str() {
-                "heavy" => UnicodeRenderStyle::Heavy,
-                "thin" => UnicodeRenderStyle::Thin,
-                "double" => UnicodeRenderStyle::Double,
-                "hex" => UnicodeRenderStyle::Hexadecimal,
-                _ => UnicodeRenderStyle::Heavy,
-            };
+
             let grid = generator.generate(*width, *height);
-            let renderer = UnicodeRenderer::new(style, true);
-            println!("{}", renderer.render(&grid).trim_end());
+
+            if let Some(style) = match style.as_str() {
+                "heavy" => Some(UnicodeRenderStyle::Heavy),
+                "thin" => Some(UnicodeRenderStyle::Thin),
+                "double" => Some(UnicodeRenderStyle::Double),
+                "hex" => Some(UnicodeRenderStyle::Hexadecimal),
+                _ => None,
+            } {
+                let renderer = UnicodeRenderer::new(style, true);
+                println!("{}", renderer.render(&grid).trim_end());
+                return;
+            }
+
+            if let Some(style) = match style.as_str() {
+                "ppm" => Some(ImageFormat::PPM),
+                "pbm" => Some(ImageFormat::PBM),
+                _ => None,
+            } {
+                let renderer = ImageRenderer::new(style);
+                println!("{}", renderer.render(&grid).trim_end());
+                return;
+            }
+
+            eprintln!("Unknown style: {}", style);
             return;
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachable
