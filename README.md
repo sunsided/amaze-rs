@@ -1,9 +1,27 @@
 # A maze generator
 
-Example usage
+A playground for maze generation.
+
+![](docs/gui.png)
+
+## Example Usage
+
+### GUI
+
+Example GUI usage (default style, seed, and size):
 
 ```bash
-cargo run -- gen --seed 1337 --width 16 --height 16 --style thin
+just show-gui
+```
+
+This shows the GUI depicted above.
+
+### CLI
+
+Example CLI usage (default style, seed, and size):
+
+```bash
+just show-example
 ```
 
 Example output:
@@ -25,4 +43,10 @@ Example output:
 ││╵│└┘└┴┘└┤││╵└┐
 │└┐└┐┌───┐╵│└──┤
 └╴└─┴┘╶──┴─┘╶──┘
+```
+
+Alternatively, you can generate a PPM image using:
+
+```bash
+just show-example-ppm
 ```
