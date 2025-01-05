@@ -100,12 +100,12 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Thin, true);
     /// assert_eq!(renderer.render(&grid), indoc::indoc!(
     ///     "
-    ///     ╷╶┬┐╶┐
-    ///     └─┘└─┤
-    ///     ┌───┐│
-    ///     └┐╷┌┘│
-    ///     ╷└┤└─┘
-    ///     └─┴──╴
+    ///     ╷╶┬──┐
+    ///     └┐│┌┐╵
+    ///     ╷│├┘└┐
+    ///     ├┘└─╴│
+    ///     └─┐┌─┤
+    ///     ╶─┴┘╶┘
     ///     "
     ///     ));
     /// ```
@@ -122,12 +122,12 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Double, true);
     /// assert_eq!(renderer.render(&grid), indoc::indoc!(
     ///     "
-    ///     ╥╞╦╗╞╗
-    ///     ╚═╝╚═╣
-    ///     ╔═══╗║
-    ///     ╚╗╥╔╝║
-    ///     ╥╚╣╚═╝
-    ///     ╚═╩══╡
+    ///     ╥╞╦══╗
+    ///     ╚╗║╔╗╨
+    ///     ╥║╠╝╚╗
+    ///     ╠╝╚═╡║
+    ///     ╚═╗╔═╣
+    ///     ╞═╩╝╞╝
     ///     "
     ///     ));
     /// ```
@@ -144,12 +144,12 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
     /// assert_eq!(renderer.render(&grid), indoc::indoc!(
     ///     "
-    ///     ╻╺┳┓╺┓
-    ///     ┗━┛┗━┫
-    ///     ┏━━━┓┃
-    ///     ┗┓╻┏┛┃
-    ///     ╻┗┫┗━┛
-    ///     ┗━┻━━╸
+    ///     ╻╺┳━━┓
+    ///     ┗┓┃┏┓╹
+    ///     ╻┃┣┛┗┓
+    ///     ┣┛┗━╸┃
+    ///     ┗━┓┏━┫
+    ///     ╺━┻┛╺┛
     ///     "
     ///     ));
     /// ```
@@ -167,12 +167,12 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, true);
     /// assert_eq!(renderer.render(&grid), indoc::indoc!(
     ///     "
-    ///     24EA4A
-    ///     5C95CB
-    ///     6CCCA3
-    ///     5A2693
-    ///     25B5C9
-    ///     5CDCC8
+    ///     24ECCA
+    ///     5A36A1
+    ///     23795A
+    ///     795C83
+    ///     5CA6CB
+    ///     4CD949
     ///     "
     ///     ));
     /// ```
@@ -198,18 +198,18 @@ impl UnicodeRenderer {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
     /// assert_eq!(renderer.render(&grid), indoc::indoc!(
     ///     "
-    ///     ╻╺┳┓╺┓
-    ///     ┗━┛┗━┫
-    ///     ┏━━━┓┃
-    ///     ┗┓╻┏┛┃
-    ///     ╻┗┫┗━┛
-    ///     ┗━┻━━╸
+    ///     ╻╺┳━━┓
+    ///     ┗┓┃┏┓╹
+    ///     ╻┃┣┛┗┓
+    ///     ┣┛┗━╸┃
+    ///     ┗━┓┏━┫
+    ///     ╺━┻┛╺┛
     ///     "
     ///     ));
     ///
     /// // Without line breaks:
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, false);
-    /// assert_eq!(renderer.render(&grid), "╻╺┳┓╺┓┗━┛┗━┫┏━━━┓┃┗┓╻┏┛┃╻┗┫┗━┛┗━┻━━╸");
+    /// assert_eq!(renderer.render(&grid), "╻╺┳━━┓┗┓┃┏┓╹╻┃┣┛┗┓┣┛┗━╸┃┗━┓┏━┫╺━┻┛╺┛");
     /// ```
     pub fn new(style: UnicodeRenderStyle, line_breaks: bool) -> Self {
         Self {
@@ -263,12 +263,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╻╺┳┓╺┓
-            ┗━┛┗━┫
-            ┏━━━┓┃
-            ┗┓╻┏┛┃
-            ╻┗┫┗━┛
-            ┗━┻━━╸
+            ╻╺┳━━┓
+            ┗┓┃┏┓╹
+            ╻┃┣┛┗┓
+            ┣┛┗━╸┃
+            ┗━┓┏━┫
+            ╺━┻┛╺┛
             "
         );
         assert_eq!(str, expected);
@@ -283,12 +283,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╥╞╦╗╞╗
-            ╚═╝╚═╣
-            ╔═══╗║
-            ╚╗╥╔╝║
-            ╥╚╣╚═╝
-            ╚═╩══╡
+            ╥╞╦══╗
+            ╚╗║╔╗╨
+            ╥║╠╝╚╗
+            ╠╝╚═╡║
+            ╚═╗╔═╣
+            ╞═╩╝╞╝
             "
         );
         assert_eq!(str, expected);
@@ -303,12 +303,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╷╶┬┐╶┐
-            └─┘└─┤
-            ┌───┐│
-            └┐╷┌┘│
-            ╷└┤└─┘
-            └─┴──╴
+            ╷╶┬──┐
+            └┐│┌┐╵
+            ╷│├┘└┐
+            ├┘└─╴│
+            └─┐┌─┤
+            ╶─┴┘╶┘
             "
         );
         assert_eq!(str, expected);
@@ -323,19 +323,19 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            24EA4A
-            5C95CB
-            6CCCA3
-            5A2693
-            25B5C9
-            5CDCC8
+            24ECCA
+            5A36A1
+            23795A
+            795C83
+            5CA6CB
+            4CD949
             "
         );
         assert_eq!(str, expected);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, false);
         let str = renderer.render(&grid);
-        let expected = "24EA4A5C95CB6CCCA35A269325B5C95CDCC8";
+        let expected = "24ECCA5A36A123795A795C835CA6CB4CD949";
         assert_eq!(str, expected);
     }
 }
