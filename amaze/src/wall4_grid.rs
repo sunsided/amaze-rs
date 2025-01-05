@@ -33,6 +33,16 @@ impl Wall4Grid {
     }
 
     pub fn remove_wall_between(&mut self, current: GridCoord2D, selected: GridCoord2D) {
+        // Check adjacency
+        let dx = current.x as isize - selected.x as isize;
+        let dy = current.y as isize - selected.y as isize;
+        assert!(
+            (dx.abs() == 1 && dy == 0) || (dy.abs() == 1 && dx == 0),
+            "Cells are not adjacent: {:?}, {:?}",
+            current,
+            selected
+        );
+
         let c = self.linearize_coords(current);
         let s = self.linearize_coords(selected);
 

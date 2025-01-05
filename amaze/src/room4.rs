@@ -84,8 +84,8 @@ impl<Tag> Room4<Tag> {
         match direction {
             Direction4::NORTH => self.north,
             Direction4::SOUTH => self.south,
-            Direction4::EAST => self.west,
-            Direction4::WEST => self.east,
+            Direction4::EAST => self.east,
+            Direction4::WEST => self.west,
             _ => panic!("Must specify a trivial direction, got {:?}", direction),
         }
     }
