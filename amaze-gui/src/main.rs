@@ -15,8 +15,8 @@ struct MyApp {
     pan: egui::Vec2,
     dragging: bool,
     last_cursor_pos: egui::Pos2,
-    // Track the previous available size of the central panel
     prev_available_size: Option<egui::Vec2>,
+    start_cell: Option<GridCoord2D>,
 }
 
 impl Default for MyApp {
@@ -38,6 +38,7 @@ impl Default for MyApp {
             dragging: false,
             last_cursor_pos: egui::Pos2::new(0.0, 0.0),
             prev_available_size: None,
+            start_cell: None, // Initialize as None (no start cell selected)
         }
     }
 }
@@ -120,11 +121,13 @@ impl App for MyApp {
             if ui.button("Reset View").clicked() {
                 self.zoom = 1.0;
                 self.pan = egui::Vec2::new(0.0, 0.0);
+                self.start_cell = None; // Optional: Reset start cell on view reset
             }
 
             // Instructions
             ui.label("Use the middle mouse button to pan the maze.");
             ui.label("Use the mouse wheel to zoom in or out.");
+            ui.label("Click to select a cell.");
         });
 
         // Central Panel for Maze Rendering
@@ -195,7 +198,35 @@ impl App for MyApp {
                 None
             };
 
-            // Iterate over each cell and draw walls
+            // Handle mouse clicks to select/unselect the start cell
+            if ctx.input(|i| i.pointer.any_click()) {
+                if let Some(mouse_pos) = ctx.input(|i| i.pointer.interact_pos()) {
+                    if mouse_pos.x >= maze_top_left.x
+                        && mouse_pos.x < (maze_top_left.x + total_maze_width)
+                        && mouse_pos.y >= maze_top_left.y
+                        && mouse_pos.y < (maze_top_left.y + total_maze_height)
+                    {
+                        let clicked_x =
+                            ((mouse_pos.x - maze_top_left.x) / cell_size).floor() as usize;
+                        let clicked_y =
+                            ((mouse_pos.y - maze_top_left.y) / cell_size).floor() as usize;
+
+                        if clicked_x < maze.width() && clicked_y < maze.height() {
+                            let clicked_coord = GridCoord2D::new(clicked_x, clicked_y);
+
+                            if self.start_cell == Some(clicked_coord) {
+                                // Unselect if the same cell is clicked again
+                                self.start_cell = None;
+                            } else {
+                                // Select the new cell as start position
+                                self.start_cell = Some(clicked_coord);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Iterate over each cell and draw walls with appropriate highlights
             for y in 0..maze.height() {
                 for x in 0..maze.width() {
                     let coord = GridCoord2D::new(x, y);
@@ -219,9 +250,11 @@ impl App for MyApp {
                         (y as f32 + 1.0) * cell_size + maze_top_left.y,
                     );
 
-                    // Determine fill color based on hover
-                    let fill_color = if hovered_coord.map_or(false, |c| c.x == x && c.y == y) {
-                        Color32::from_rgb(255, 255, 200) // Light yellow
+                    // Determine fill color based on hover and selection
+                    let fill_color = if Some(coord) == self.start_cell {
+                        Color32::from_rgb(255, 200, 200) // Light red for start cell
+                    } else if hovered_coord.map_or(false, |c| c.x == x && c.y == y) {
+                        Color32::from_rgb(255, 255, 200) // Light yellow for hovered cell
                     } else if (x + y) % 2 == 0 {
                         Color32::from_rgb(240, 240, 240)
                     } else {
