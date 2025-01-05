@@ -1,6 +1,14 @@
 [package]
 name = "amaze"
-version = "0.1.0"
+description = "A maze generator"
+keywords = ["maze", "maze-generator"]
+categories = ["game-development", "simulation"]
+authors = ["Markus Mayer <widemeadows@gmail.com>"]
+homepage = "https://github.com/sunsided/amaze-rs"
+repository = "https://github.com/sunsided/amaze-rs"
+license = "EUPL-1.2 OR MIT OR Apache-2.0"
+readme = "../README.md"
+version = "0.1.1"
 edition = "2021"
 
 [features]
