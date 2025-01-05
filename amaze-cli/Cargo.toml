@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 amaze = { path = "../amaze" }
-clap = "3.2.16"
+clap = "4.5.23"
