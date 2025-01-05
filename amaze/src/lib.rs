@@ -9,16 +9,8 @@ mod room4_list;
 mod visit_map_2d;
 mod wall4_grid;
 
-pub fn double(x: i64) -> i64 {
-    x * 2
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        assert_eq!(double(2), 4);
-    }
+pub mod preamble {
+    pub use crate::direction4::{Direction4, Direction4Iterator};
+    pub use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
+    pub use crate::wall4_grid::Wall4Grid;
 }

@@ -1,3 +1,4 @@
 [workspace]
 resolver = "2"
-members = ["amaze", "amaze-cli"]
+members = ["amaze", "amaze-cli", "amaze-gui"]
+default-members = ["amaze-cli", "amaze-gui"]
