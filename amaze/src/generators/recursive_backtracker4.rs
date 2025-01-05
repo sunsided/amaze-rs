@@ -4,7 +4,7 @@ use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
+use rand::SeedableRng;
 
 /// A maze generator that implements the Recursive Backtracking algorithm.
 pub struct RecursiveBacktracker4 {
@@ -132,7 +132,7 @@ impl MazeGenerator2D for RecursiveBacktracker4 {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "unicode-renderer"))]
 mod tests {
     use super::*;
     use crate::renderers::{UnicodeRenderStyle, UnicodeRenderer};

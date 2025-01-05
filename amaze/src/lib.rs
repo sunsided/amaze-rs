@@ -1,6 +1,8 @@
 pub mod direction4;
 pub mod generators;
 mod grid_coord_2d;
+
+#[cfg(any(feature = "unicode-renderer", feature = "pgm-renderer"))]
 pub mod renderers;
 mod room4;
 mod room4_list;

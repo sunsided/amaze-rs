@@ -3,6 +3,12 @@ name = "amaze"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["renderers"]
+renderers = ["unicode-renderer", "pgm-renderer"]
+unicode-renderer = []
+pgm-renderer = []
+
 [dependencies]
 rand = "^0.8.5"
 
