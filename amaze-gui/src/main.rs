@@ -154,19 +154,46 @@ impl App for MyApp {
             if let Some(old_size) = self.prev_available_size {
                 if old_size != available_size {
                     let delta = available_size - old_size;
-                    self.pan -= delta / 2.0;
+                    self.pan += delta / 2.0;
                 }
             }
 
             // Update the previous available size
             self.prev_available_size = Some(available_size);
 
-            // Calculate pan offsets to center the maze
-            // Positive pan.x moves the maze to the right
-            // Positive pan.y moves the maze downward
-            let panel_center = ctx.available_rect().center();
-            let center_x = panel_center.x - total_maze_width / 2.0 + self.pan.x;
-            let center_y = panel_center.y - total_maze_height / 2.0 + self.pan.y;
+            // Determine the center of the CentralPanel
+            let center = available_rect.center();
+
+            // Calculate the top-left position of the maze to center it
+            let maze_top_left = egui::pos2(
+                center.x - (total_maze_width / 2.0) + self.pan.x,
+                center.y - (total_maze_height / 2.0) + self.pan.y,
+            );
+
+            // Get the hover position
+            let hover_pos = ctx.input(|i| i.pointer.hover_pos());
+
+            // Determine which cell is hovered
+            let hovered_coord: Option<GridCoord2D> = if let Some(mouse_pos) = hover_pos {
+                if mouse_pos.x >= maze_top_left.x
+                    && mouse_pos.x < (maze_top_left.x + total_maze_width)
+                    && mouse_pos.y >= maze_top_left.y
+                    && mouse_pos.y < (maze_top_left.y + total_maze_height)
+                {
+                    let hovered_x = ((mouse_pos.x - maze_top_left.x) / cell_size).floor() as usize;
+                    let hovered_y = ((mouse_pos.y - maze_top_left.y) / cell_size).floor() as usize;
+
+                    if hovered_x < maze.width() && hovered_y < maze.height() {
+                        Some(GridCoord2D::new(hovered_x, hovered_y))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
             // Iterate over each cell and draw walls
             for y in 0..maze.height() {
@@ -176,36 +203,37 @@ impl App for MyApp {
 
                     // Calculate the position with pan and zoom
                     let top_left = egui::pos2(
-                        x as f32 * cell_size + center_x,
-                        y as f32 * cell_size + center_y,
+                        x as f32 * cell_size + maze_top_left.x,
+                        y as f32 * cell_size + maze_top_left.y,
                     );
                     let top_right = egui::pos2(
-                        (x as f32 + 1.0) * cell_size + center_x,
-                        y as f32 * cell_size + center_y,
+                        (x as f32 + 1.0) * cell_size + maze_top_left.x,
+                        y as f32 * cell_size + maze_top_left.y,
                     );
                     let bottom_left = egui::pos2(
-                        x as f32 * cell_size + center_x,
-                        (y as f32 + 1.0) * cell_size + center_y,
+                        x as f32 * cell_size + maze_top_left.x,
+                        (y as f32 + 1.0) * cell_size + maze_top_left.y,
                     );
                     let bottom_right = egui::pos2(
-                        (x as f32 + 1.0) * cell_size + center_x,
-                        (y as f32 + 1.0) * cell_size + center_y,
+                        (x as f32 + 1.0) * cell_size + maze_top_left.x,
+                        (y as f32 + 1.0) * cell_size + maze_top_left.y,
                     );
 
-                    // Optional: Fill cell background for better visuals
-                    if (x + y) % 2 == 0 {
-                        painter.rect_filled(
-                            egui::Rect::from_min_max(top_left, bottom_right),
-                            0.0,
-                            Color32::from_rgb(240, 240, 240),
-                        );
+                    // Determine fill color based on hover
+                    let fill_color = if hovered_coord.map_or(false, |c| c.x == x && c.y == y) {
+                        Color32::from_rgb(255, 255, 200) // Light yellow
+                    } else if (x + y) % 2 == 0 {
+                        Color32::from_rgb(240, 240, 240)
                     } else {
-                        painter.rect_filled(
-                            egui::Rect::from_min_max(top_left, bottom_right),
-                            0.0,
-                            Color32::from_rgb(220, 220, 220),
-                        );
-                    }
+                        Color32::from_rgb(220, 220, 220)
+                    };
+
+                    // Fill the cell with the determined color
+                    painter.rect_filled(
+                        egui::Rect::from_min_max(top_left, bottom_right),
+                        0.0,
+                        fill_color,
+                    );
 
                     // Draw North Wall
                     if wall.contains(Direction4::NORTH) {
