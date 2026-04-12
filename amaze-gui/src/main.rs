@@ -1,10 +1,19 @@
+use amaze::dungeon::{
+    solve_bfs, DungeonGrid, DungeonType, DungeonWalkGenerator, TileType,
+};
 use amaze::generators::{
     BinaryTree4, Eller4, GenerationStep, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::*;
-use eframe::{App, Frame, NativeOptions, egui, epaint::Color32};
+use eframe::{egui, epaint::Color32, App, Frame, NativeOptions};
 use std::sync::Mutex;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum Mode {
+    Maze,
+    Dungeon,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum AlgorithmChoice {
@@ -34,12 +43,17 @@ impl AlgorithmChoice {
 }
 
 struct MyApp {
+    mode: Mode,
     seed_input: String,
     seed: u64,
     width: usize,
     height: usize,
     algorithm: AlgorithmChoice,
     maze: Mutex<Wall4Grid>,
+    dungeon: Mutex<DungeonGrid>,
+    dungeon_type: DungeonType,
+    floor_count: usize,
+    winding_probability: u8,
     zoom: f32,
     pan: egui::Vec2,
     dragging: bool,
@@ -60,14 +74,27 @@ impl Default for MyApp {
         let initial_height = 24;
         let algorithm = AlgorithmChoice::RecursiveBacktracker;
         let maze = generate_maze(algorithm, initial_seed, initial_width, initial_height);
+        let dungeon = generate_dungeon(
+            DungeonType::Rooms,
+            initial_seed,
+            initial_width,
+            initial_height,
+            120,
+            50,
+        );
 
         Self {
+            mode: Mode::Maze,
             seed_input: initial_seed.to_string(),
             seed: initial_seed,
             width: initial_width,
             height: initial_height,
             algorithm,
             maze: Mutex::new(maze),
+            dungeon: Mutex::new(dungeon),
+            dungeon_type: DungeonType::Rooms,
+            floor_count: 120,
+            winding_probability: 50,
             zoom: 1.0,
             pan: egui::Vec2::new(0.0, 0.0),
             dragging: false,
@@ -91,58 +118,130 @@ impl App for MyApp {
         tick_animation(self);
 
         egui::Panel::left("controls_panel").show_inside(ui, |ui| {
-            ui.heading("Maze Controls");
+            ui.heading("Controls");
 
-            ui.label("Algorithm:");
-            let previous_algorithm = self.algorithm;
-            egui::ComboBox::from_id_salt("algorithm")
-                .selected_text(self.algorithm.as_str())
+            ui.label("Mode:");
+            let previous_mode = self.mode;
+            egui::ComboBox::from_id_salt("mode")
+                .selected_text(match self.mode {
+                    Mode::Maze => "Maze",
+                    Mode::Dungeon => "Dungeon",
+                })
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::RecursiveBacktracker,
-                        AlgorithmChoice::RecursiveBacktracker.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::GrowingTree,
-                        AlgorithmChoice::GrowingTree.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::Kruskal,
-                        AlgorithmChoice::Kruskal.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::Eller,
-                        AlgorithmChoice::Eller.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::Wilson,
-                        AlgorithmChoice::Wilson.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::HuntAndKill,
-                        AlgorithmChoice::HuntAndKill.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::Sidewinder,
-                        AlgorithmChoice::Sidewinder.as_str(),
-                    );
-                    ui.selectable_value(
-                        &mut self.algorithm,
-                        AlgorithmChoice::BinaryTree,
-                        AlgorithmChoice::BinaryTree.as_str(),
-                    );
+                    ui.selectable_value(&mut self.mode, Mode::Maze, "Maze");
+                    ui.selectable_value(&mut self.mode, Mode::Dungeon, "Dungeon");
                 });
 
-            if previous_algorithm != self.algorithm {
-                regenerate(self);
+            if previous_mode != self.mode {
+                self.auto_fit_pending = true;
+                self.start_cell = None;
+                self.end_cell = None;
             }
+
+            ui.separator();
+
+            if self.mode == Mode::Maze {
+                ui.label("Algorithm:");
+                let previous_algorithm = self.algorithm;
+                egui::ComboBox::from_id_salt("algorithm")
+                    .selected_text(self.algorithm.as_str())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::RecursiveBacktracker,
+                            AlgorithmChoice::RecursiveBacktracker.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::GrowingTree,
+                            AlgorithmChoice::GrowingTree.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::Kruskal,
+                            AlgorithmChoice::Kruskal.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::Eller,
+                            AlgorithmChoice::Eller.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::Wilson,
+                            AlgorithmChoice::Wilson.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::HuntAndKill,
+                            AlgorithmChoice::HuntAndKill.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::Sidewinder,
+                            AlgorithmChoice::Sidewinder.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::BinaryTree,
+                            AlgorithmChoice::BinaryTree.as_str(),
+                        );
+                    });
+
+                if previous_algorithm != self.algorithm {
+                    regenerate_maze(self);
+                }
+            } else {
+                ui.label("Dungeon Type:");
+                let previous_dungeon_type = self.dungeon_type;
+                egui::ComboBox::from_id_salt("dungeon_type")
+                    .selected_text(match self.dungeon_type {
+                        DungeonType::Caverns => "Caverns",
+                        DungeonType::Rooms => "Rooms",
+                        DungeonType::Winding => "Winding",
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.dungeon_type,
+                            DungeonType::Caverns,
+                            "Caverns",
+                        );
+                        ui.selectable_value(&mut self.dungeon_type, DungeonType::Rooms, "Rooms");
+                        ui.selectable_value(
+                            &mut self.dungeon_type,
+                            DungeonType::Winding,
+                            "Winding",
+                        );
+                    });
+
+                if previous_dungeon_type != self.dungeon_type {
+                    regenerate_dungeon(self);
+                }
+
+                ui.label("Floor Tiles:");
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut self.floor_count)
+                            .range(50..=500)
+                            .speed(5.0),
+                    )
+                    .changed()
+                {
+                    regenerate_dungeon(self);
+                }
+
+                if self.dungeon_type == DungeonType::Winding {
+                    ui.label("Winding Probability (%):");
+                    if ui
+                        .add(egui::Slider::new(&mut self.winding_probability, 0..=100))
+                        .changed()
+                    {
+                        regenerate_dungeon(self);
+                    }
+                }
+            }
+
+            ui.separator();
 
             ui.label("Seed (u64):");
             let seed_response = ui.add(
@@ -154,7 +253,11 @@ impl App for MyApp {
                 if let Ok(seed) = self.seed_input.parse::<u64>() {
                     if seed != self.seed {
                         self.seed = seed;
-                        regenerate(self);
+                        if self.mode == Mode::Maze {
+                            regenerate_maze(self);
+                        } else {
+                            regenerate_dungeon(self);
+                        }
                     }
                 } else {
                     ui.label(
@@ -174,7 +277,11 @@ impl App for MyApp {
                 )
                 .changed()
             {
-                regenerate(self);
+                if self.mode == Mode::Maze {
+                    regenerate_maze(self);
+                } else {
+                    regenerate_dungeon(self);
+                }
             }
 
             ui.label("Height:");
@@ -187,11 +294,15 @@ impl App for MyApp {
                 )
                 .changed()
             {
-                regenerate(self);
+                if self.mode == Mode::Maze {
+                    regenerate_maze(self);
+                } else {
+                    regenerate_dungeon(self);
+                }
             }
 
             ui.separator();
-            if ui.button("Animate Generation").clicked() {
+            if self.mode == Mode::Maze && ui.button("Animate Generation").clicked() {
                 self.animation_steps =
                     generate_steps(self.algorithm, self.seed, self.width, self.height);
                 self.animation_index = 0;
@@ -208,9 +319,16 @@ impl App for MyApp {
             }
 
             if let (Some(start), Some(end)) = (self.start_cell, self.end_cell) {
-                let maze = self.maze.lock().unwrap();
-                let has_path = BfsSolver.solve(&maze, start, end).is_some();
-                ui.label(format!("Path ready: {has_path}"));
+                if self.mode == Mode::Maze {
+                    let maze = self.maze.lock().unwrap();
+                    let has_path = BfsSolver.solve(&maze, start, end).is_some();
+                    ui.label(format!("Path ready: {has_path}"));
+                } else {
+                    let dungeon = self.dungeon.lock().unwrap();
+                    let passability = PassabilityGrid::from(&*dungeon);
+                    let has_path = solve_bfs(&passability, start, end).is_some();
+                    ui.label(format!("Path ready: {has_path}"));
+                }
             }
 
             ui.separator();
@@ -220,145 +338,16 @@ impl App for MyApp {
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.heading("Maze Renderer");
+            ui.heading(match self.mode {
+                Mode::Maze => "Maze Renderer",
+                Mode::Dungeon => "Dungeon Renderer",
+            });
             ui.separator();
 
-            let maze = self.maze.lock().unwrap();
-            let base_cell_size = 30.0;
-            let cell_size = base_cell_size * self.zoom;
-            let total_maze_width = maze.width() as f32 * cell_size;
-            let total_maze_height = maze.height() as f32 * cell_size;
-
-            let available_size = ui.available_size();
-            let (response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
-            let available_rect = response.rect;
-
-            if self.auto_fit_pending {
-                self.zoom = fit_zoom_to_available(&maze, available_size);
-                self.auto_fit_pending = false;
-            }
-
-            if let Some(old_size) = self.prev_available_size
-                && old_size != available_size
-            {
-                let delta = available_size - old_size;
-                self.pan += delta / 2.0;
-            }
-            self.prev_available_size = Some(available_size);
-
-            let center = available_rect.center();
-            let maze_top_left = egui::pos2(
-                center.x - total_maze_width / 2.0 + self.pan.x,
-                center.y - total_maze_height / 2.0 + self.pan.y,
-            );
-
-            let hover_pos = ctx.input(|i| i.pointer.hover_pos());
-            let hovered_coord: Option<GridCoord2D> = hover_pos.and_then(|mouse_pos| {
-                if mouse_pos.x >= maze_top_left.x
-                    && mouse_pos.x < maze_top_left.x + total_maze_width
-                    && mouse_pos.y >= maze_top_left.y
-                    && mouse_pos.y < maze_top_left.y + total_maze_height
-                {
-                    let hx = ((mouse_pos.x - maze_top_left.x) / cell_size).floor() as usize;
-                    let hy = ((mouse_pos.y - maze_top_left.y) / cell_size).floor() as usize;
-                    if hx < maze.width() && hy < maze.height() {
-                        Some(GridCoord2D::new(hx, hy))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            });
-
-            if ctx.input(|i| i.pointer.any_click())
-                && let Some(clicked) = hovered_coord
-            {
-                if self.start_cell.is_none() || self.end_cell.is_some() {
-                    self.start_cell = Some(clicked);
-                    self.end_cell = None;
-                } else {
-                    self.end_cell = Some(clicked);
-                }
-            }
-
-            let solution = if let (Some(start), Some(end)) = (self.start_cell, self.end_cell) {
-                BfsSolver.solve(&maze, start, end)
+            if self.mode == Mode::Maze {
+                render_maze(ui, self, &ctx);
             } else {
-                None
-            };
-
-            for y in 0..maze.height() {
-                for x in 0..maze.width() {
-                    let coord = GridCoord2D::new(x, y);
-                    let wall = maze.get(coord).expect("grid cell exists");
-
-                    let top_left = egui::pos2(
-                        x as f32 * cell_size + maze_top_left.x,
-                        y as f32 * cell_size + maze_top_left.y,
-                    );
-                    let top_right = egui::pos2(
-                        (x as f32 + 1.0) * cell_size + maze_top_left.x,
-                        y as f32 * cell_size + maze_top_left.y,
-                    );
-                    let bottom_left = egui::pos2(
-                        x as f32 * cell_size + maze_top_left.x,
-                        (y as f32 + 1.0) * cell_size + maze_top_left.y,
-                    );
-                    let bottom_right = egui::pos2(
-                        (x as f32 + 1.0) * cell_size + maze_top_left.x,
-                        (y as f32 + 1.0) * cell_size + maze_top_left.y,
-                    );
-
-                    let is_in_solution = solution
-                        .as_ref()
-                        .is_some_and(|path| path.cells().contains(&coord));
-
-                    let fill_color = if Some(coord) == self.start_cell {
-                        Color32::from_rgb(255, 200, 200)
-                    } else if Some(coord) == self.end_cell {
-                        Color32::from_rgb(200, 200, 255)
-                    } else if is_in_solution {
-                        Color32::from_rgb(180, 230, 180)
-                    } else if hovered_coord.is_some_and(|c| c == coord) {
-                        Color32::from_rgb(255, 255, 200)
-                    } else if (x + y) % 2 == 0 {
-                        Color32::from_rgb(240, 240, 240)
-                    } else {
-                        Color32::from_rgb(220, 220, 220)
-                    };
-
-                    painter.rect_filled(
-                        egui::Rect::from_min_max(top_left, bottom_right),
-                        0.0,
-                        fill_color,
-                    );
-
-                    if wall.contains(Direction4::NORTH) {
-                        painter.line_segment(
-                            [top_left, top_right],
-                            egui::Stroke::new(2.0, Color32::BLACK),
-                        );
-                    }
-                    if wall.contains(Direction4::SOUTH) {
-                        painter.line_segment(
-                            [bottom_left, bottom_right],
-                            egui::Stroke::new(2.0, Color32::BLACK),
-                        );
-                    }
-                    if wall.contains(Direction4::EAST) {
-                        painter.line_segment(
-                            [top_right, bottom_right],
-                            egui::Stroke::new(2.0, Color32::BLACK),
-                        );
-                    }
-                    if wall.contains(Direction4::WEST) {
-                        painter.line_segment(
-                            [top_left, bottom_left],
-                            egui::Stroke::new(2.0, Color32::BLACK),
-                        );
-                    }
-                }
+                render_dungeon(ui, self, &ctx);
             }
         });
 
@@ -429,7 +418,20 @@ fn generate_steps(
     }
 }
 
-fn regenerate(app: &mut MyApp) {
+fn generate_dungeon(
+    dungeon_type: DungeonType,
+    seed: u64,
+    width: usize,
+    height: usize,
+    floor_count: usize,
+    winding_probability: u8,
+) -> DungeonGrid {
+    DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
+        .with_winding_probability(winding_probability)
+        .generate(width, height, floor_count)
+}
+
+fn regenerate_maze(app: &mut MyApp) {
     app.is_animating = false;
     app.animation_steps.clear();
     app.animation_index = 0;
@@ -439,6 +441,280 @@ fn regenerate(app: &mut MyApp) {
     let mut lock = app.maze.lock().unwrap();
     *lock = generate_maze(app.algorithm, app.seed, app.width, app.height);
 }
+
+fn regenerate_dungeon(app: &mut MyApp) {
+    app.start_cell = None;
+    app.end_cell = None;
+    app.auto_fit_pending = true;
+    let mut lock = app.dungeon.lock().unwrap();
+    *lock = generate_dungeon(
+        app.dungeon_type,
+        app.seed,
+        app.width,
+        app.height,
+        app.floor_count,
+        app.winding_probability,
+    );
+}
+
+fn render_maze(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
+    let maze = app.maze.lock().unwrap();
+    let base_cell_size = 30.0;
+    let cell_size = base_cell_size * app.zoom;
+    let total_maze_width = maze.width() as f32 * cell_size;
+    let total_maze_height = maze.height() as f32 * cell_size;
+
+    let available_size = ui.available_size();
+    let (response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+    let available_rect = response.rect;
+
+    if app.auto_fit_pending {
+        app.zoom = fit_zoom_to_available(&maze, available_size);
+        app.auto_fit_pending = false;
+    }
+
+    if let Some(old_size) = app.prev_available_size
+        && old_size != available_size
+    {
+        let delta = available_size - old_size;
+        app.pan += delta / 2.0;
+    }
+    app.prev_available_size = Some(available_size);
+
+    let center = available_rect.center();
+    let maze_top_left = egui::pos2(
+        center.x - total_maze_width / 2.0 + app.pan.x,
+        center.y - total_maze_height / 2.0 + app.pan.y,
+    );
+
+    let hover_pos = ctx.input(|i| i.pointer.hover_pos());
+    let hovered_coord: Option<GridCoord2D> = hover_pos.and_then(|mouse_pos| {
+        if mouse_pos.x >= maze_top_left.x
+            && mouse_pos.x < maze_top_left.x + total_maze_width
+            && mouse_pos.y >= maze_top_left.y
+            && mouse_pos.y < maze_top_left.y + total_maze_height
+        {
+            let hx = ((mouse_pos.x - maze_top_left.x) / cell_size).floor() as usize;
+            let hy = ((mouse_pos.y - maze_top_left.y) / cell_size).floor() as usize;
+            if hx < maze.width() && hy < maze.height() {
+                Some(GridCoord2D::new(hx, hy))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+
+    if ctx.input(|i| i.pointer.any_click())
+        && let Some(clicked) = hovered_coord
+    {
+        if app.start_cell.is_none() || app.end_cell.is_some() {
+            app.start_cell = Some(clicked);
+            app.end_cell = None;
+        } else {
+            app.end_cell = Some(clicked);
+        }
+    }
+
+    let solution = if let (Some(start), Some(end)) = (app.start_cell, app.end_cell) {
+        BfsSolver.solve(&maze, start, end)
+    } else {
+        None
+    };
+
+    for y in 0..maze.height() {
+        for x in 0..maze.width() {
+            let coord = GridCoord2D::new(x, y);
+            let wall = maze.get(coord).expect("grid cell exists");
+
+            let top_left = egui::pos2(
+                x as f32 * cell_size + maze_top_left.x,
+                y as f32 * cell_size + maze_top_left.y,
+            );
+            let top_right = egui::pos2(
+                (x as f32 + 1.0) * cell_size + maze_top_left.x,
+                y as f32 * cell_size + maze_top_left.y,
+            );
+            let bottom_left = egui::pos2(
+                x as f32 * cell_size + maze_top_left.x,
+                (y as f32 + 1.0) * cell_size + maze_top_left.y,
+            );
+            let bottom_right = egui::pos2(
+                (x as f32 + 1.0) * cell_size + maze_top_left.x,
+                (y as f32 + 1.0) * cell_size + maze_top_left.y,
+            );
+
+            let is_in_solution = solution
+                .as_ref()
+                .is_some_and(|path| path.cells().contains(&coord));
+
+            let fill_color = if Some(coord) == app.start_cell {
+                Color32::from_rgb(255, 200, 200)
+            } else if Some(coord) == app.end_cell {
+                Color32::from_rgb(200, 200, 255)
+            } else if is_in_solution {
+                Color32::from_rgb(180, 230, 180)
+            } else if hovered_coord.is_some_and(|c| c == coord) {
+                Color32::from_rgb(255, 255, 200)
+            } else if (x + y) % 2 == 0 {
+                Color32::from_rgb(240, 240, 240)
+            } else {
+                Color32::from_rgb(220, 220, 220)
+            };
+
+            painter.rect_filled(
+                egui::Rect::from_min_max(top_left, bottom_right),
+                0.0,
+                fill_color,
+            );
+
+            if wall.contains(Direction4::NORTH) {
+                painter.line_segment(
+                    [top_left, top_right],
+                    egui::Stroke::new(2.0, Color32::BLACK),
+                );
+            }
+            if wall.contains(Direction4::SOUTH) {
+                painter.line_segment(
+                    [bottom_left, bottom_right],
+                    egui::Stroke::new(2.0, Color32::BLACK),
+                );
+            }
+            if wall.contains(Direction4::EAST) {
+                painter.line_segment(
+                    [top_right, bottom_right],
+                    egui::Stroke::new(2.0, Color32::BLACK),
+                );
+            }
+            if wall.contains(Direction4::WEST) {
+                painter.line_segment(
+                    [top_left, bottom_left],
+                    egui::Stroke::new(2.0, Color32::BLACK),
+                );
+            }
+        }
+    }
+}
+
+fn render_dungeon(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
+    let dungeon = app.dungeon.lock().unwrap();
+    let base_cell_size = 30.0;
+    let cell_size = base_cell_size * app.zoom;
+    let total_dungeon_width = dungeon.width() as f32 * cell_size;
+    let total_dungeon_height = dungeon.height() as f32 * cell_size;
+
+    let available_size = ui.available_size();
+    let (response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+    let available_rect = response.rect;
+
+    if app.auto_fit_pending {
+        app.zoom = fit_zoom_to_dungeon(&dungeon, available_size);
+        app.auto_fit_pending = false;
+    }
+
+    if let Some(old_size) = app.prev_available_size
+        && old_size != available_size
+    {
+        let delta = available_size - old_size;
+        app.pan += delta / 2.0;
+    }
+    app.prev_available_size = Some(available_size);
+
+    let center = available_rect.center();
+    let dungeon_top_left = egui::pos2(
+        center.x - total_dungeon_width / 2.0 + app.pan.x,
+        center.y - total_dungeon_height / 2.0 + app.pan.y,
+    );
+
+    let hover_pos = ctx.input(|i| i.pointer.hover_pos());
+    let hovered_coord: Option<GridCoord2D> = hover_pos.and_then(|mouse_pos| {
+        if mouse_pos.x >= dungeon_top_left.x
+            && mouse_pos.x < dungeon_top_left.x + total_dungeon_width
+            && mouse_pos.y >= dungeon_top_left.y
+            && mouse_pos.y < dungeon_top_left.y + total_dungeon_height
+        {
+            let hx = ((mouse_pos.x - dungeon_top_left.x) / cell_size).floor() as usize;
+            let hy = ((mouse_pos.y - dungeon_top_left.y) / cell_size).floor() as usize;
+            if hx < dungeon.width() && hy < dungeon.height() {
+                Some(GridCoord2D::new(hx, hy))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+
+    if ctx.input(|i| i.pointer.any_click())
+        && let Some(clicked) = hovered_coord
+    {
+        // Only allow clicking on floor tiles
+        if dungeon.get(clicked) == Some(TileType::Floor) {
+            if app.start_cell.is_none() || app.end_cell.is_some() {
+                app.start_cell = Some(clicked);
+                app.end_cell = None;
+            } else {
+                app.end_cell = Some(clicked);
+            }
+        }
+    }
+
+    let solution = if let (Some(start), Some(end)) = (app.start_cell, app.end_cell) {
+        let passability = PassabilityGrid::from(&*dungeon);
+        solve_bfs(&passability, start, end)
+    } else {
+        None
+    };
+
+    for y in 0..dungeon.height() {
+        for x in 0..dungeon.width() {
+            let coord = GridCoord2D::new(x, y);
+            let tile = dungeon.get(coord).expect("grid cell exists");
+
+            let top_left = egui::pos2(
+                x as f32 * cell_size + dungeon_top_left.x,
+                y as f32 * cell_size + dungeon_top_left.y,
+            );
+            let bottom_right = egui::pos2(
+                (x as f32 + 1.0) * cell_size + dungeon_top_left.x,
+                (y as f32 + 1.0) * cell_size + dungeon_top_left.y,
+            );
+
+            let is_exit = dungeon.exit() == Some(coord);
+            let is_in_solution = solution
+                .as_ref()
+                .is_some_and(|path| path.cells().contains(&coord));
+
+            let fill_color = match tile {
+                TileType::Wall => Color32::from_rgb(40, 40, 40),
+                TileType::Floor => {
+                    if Some(coord) == app.start_cell {
+                        Color32::from_rgb(255, 200, 200)
+                    } else if Some(coord) == app.end_cell {
+                        Color32::from_rgb(200, 200, 255)
+                    } else if is_exit {
+                        Color32::from_rgb(255, 215, 0) // Gold for exit
+                    } else if is_in_solution {
+                        Color32::from_rgb(180, 230, 180)
+                    } else if hovered_coord.is_some_and(|c| c == coord) {
+                        Color32::from_rgb(255, 255, 200)
+                    } else {
+                        Color32::from_rgb(220, 220, 200) // Light tan for floor
+                    }
+                }
+                TileType::Empty => Color32::from_rgb(10, 10, 10), // Almost black
+            };
+
+            painter.rect_filled(
+                egui::Rect::from_min_max(top_left, bottom_right),
+                0.0,
+                fill_color,
+            );
+        }
+    }
+}
+
 
 fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
     let base_cell_size = 30.0;
@@ -451,6 +727,20 @@ fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
     let padding = 24.0;
     let fit_w = (available_size.x - padding).max(32.0) / maze_w;
     let fit_h = (available_size.y - padding).max(32.0) / maze_h;
+    fit_w.min(fit_h).clamp(0.1, 5.0)
+}
+
+fn fit_zoom_to_dungeon(dungeon: &DungeonGrid, available_size: egui::Vec2) -> f32 {
+    let base_cell_size = 30.0;
+    let dungeon_w = (dungeon.width() as f32) * base_cell_size;
+    let dungeon_h = (dungeon.height() as f32) * base_cell_size;
+    if dungeon_w <= 0.0 || dungeon_h <= 0.0 {
+        return 1.0;
+    }
+
+    let padding = 24.0;
+    let fit_w = (available_size.x - padding).max(32.0) / dungeon_w;
+    let fit_h = (available_size.y - padding).max(32.0) / dungeon_h;
     fit_w.min(fit_h).clamp(0.1, 5.0)
 }
 
