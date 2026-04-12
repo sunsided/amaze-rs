@@ -183,6 +183,10 @@ impl DungeonWalkGenerator {
             return (grid, visitor.into_steps());
         }
 
+        // Cap floor_count to max possible tiles (leaving some margin for walls)
+        let max_possible_floor = (width * height).saturating_mul(9) / 10; // 90% max
+        let target_floor_count = floor_count.min(max_possible_floor);
+
         // Start at center
         let mut walker_pos = GridCoord2D::new(width / 2, height / 2);
         let mut last_floor_pos = walker_pos;
@@ -191,8 +195,19 @@ impl DungeonWalkGenerator {
         grid.set(walker_pos, TileType::Floor);
         visitor.on_step(&DungeonGenerationStep::PlaceFloor { coord: walker_pos });
 
+        // Track iterations to prevent infinite loops
+        let mut iterations_since_progress = 0;
+        let max_stalled_iterations = 1000; // If no progress for 1000 iterations, give up
+
         // Generate floor tiles
-        while grid.floor_count() < floor_count {
+        while grid.floor_count() < target_floor_count {
+            let floor_count_before = grid.floor_count();
+            iterations_since_progress += 1;
+
+            // Safety check: if we've been stuck for too long, exit
+            if iterations_since_progress > max_stalled_iterations {
+                break;
+            }
             match self.dungeon_type {
                 DungeonType::Caverns => {
                     // Simple random walk
@@ -224,7 +239,7 @@ impl DungeonWalkGenerator {
                         roll > self.winding_hall_probability
                     };
 
-                    if should_stamp_room && grid.floor_count() < floor_count {
+                    if should_stamp_room && grid.floor_count() < target_floor_count {
                         self.stamp_room(
                             &mut rng,
                             &mut grid,
@@ -234,6 +249,11 @@ impl DungeonWalkGenerator {
                         );
                     }
                 }
+            }
+
+            // Check if we made progress
+            if grid.floor_count() > floor_count_before {
+                iterations_since_progress = 0;
             }
         }
 
@@ -429,5 +449,34 @@ mod tests {
         for coord in floors1 {
             assert!(d2.is_floor(coord), "Floor mismatch at {:?}", coord);
         }
+    }
+
+    #[test]
+    fn test_small_grid_doesnt_hang() {
+        // Regression test: small grids with large floor_count requests should not hang
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Winding, 42);
+        let dungeon = generator.generate(8, 8, 120);
+
+        // Should complete without hanging
+        assert_eq!(dungeon.width(), 8);
+        assert_eq!(dungeon.height(), 8);
+        // Floor count will be capped to what's possible
+        assert!(dungeon.floor_count() > 0);
+        assert!(dungeon.floor_count() <= 64); // 8x8 = 64 total cells
+        assert!(dungeon.exit().is_some());
+    }
+
+    #[test]
+    fn test_impossible_floor_count_is_capped() {
+        // Request more floors than physically possible
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 123);
+        let dungeon = generator.generate(10, 10, 1000);
+
+        // Should cap to ~90% of grid size
+        assert_eq!(dungeon.width(), 10);
+        assert_eq!(dungeon.height(), 10);
+        assert!(dungeon.floor_count() > 0);
+        assert!(dungeon.floor_count() <= 90); // Max 90% of 100 cells
+        assert!(dungeon.exit().is_some());
     }
 }
