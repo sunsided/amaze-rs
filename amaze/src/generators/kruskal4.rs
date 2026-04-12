@@ -65,7 +65,7 @@ impl Kruskal4 {
 impl MazeGenerator2D for Kruskal4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
         }
     }
 

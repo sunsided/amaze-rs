@@ -20,14 +20,14 @@ where
 {
     pub fn with_selector(selector: S) -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
             selector,
         }
     }
 
     pub fn new_from_seed_with_selector(rng_seed: u64, selector: S) -> Self {
         let rng = if rng_seed == 0 {
-            StdRng::from_entropy()
+            StdRng::from_os_rng()
         } else {
             StdRng::seed_from_u64(rng_seed)
         };
@@ -89,7 +89,7 @@ where
 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
             selector: S::default(),
         }
     }

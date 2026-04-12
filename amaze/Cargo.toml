@@ -44,12 +44,12 @@ pgm-renderer = []
 serde = ["dep:serde"]
 
 [dependencies]
-rand = "^0.8.5"
+rand = "^0.9.3"
 serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 indoc = "2.0.7"
-criterion = "0.5"
+criterion = "0.7"
 
 [[bench]]
 name = "generation"

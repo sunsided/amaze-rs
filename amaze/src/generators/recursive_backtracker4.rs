@@ -4,7 +4,7 @@ use crate::generators::{
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
-use rand::prelude::SliceRandom;
+use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -22,7 +22,7 @@ impl Default for RecursiveBacktracker4 {
 impl RecursiveBacktracker4 {
     pub fn new_random() -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
         }
     }
 

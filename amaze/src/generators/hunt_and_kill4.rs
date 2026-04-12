@@ -97,7 +97,7 @@ impl HuntAndKill4 {
 impl MazeGenerator2D for HuntAndKill4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
         }
     }
 

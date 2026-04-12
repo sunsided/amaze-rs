@@ -61,7 +61,7 @@ impl Sidewinder4 {
 impl MazeGenerator2D for Sidewinder4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_entropy(),
+            rng: StdRng::from_os_rng(),
         }
     }
 

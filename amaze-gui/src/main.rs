@@ -84,11 +84,13 @@ impl Default for MyApp {
 }
 
 impl App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
-        handle_panning_zooming(ctx, self);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut Frame) {
+        let ctx = ui.ctx().clone();
+
+        handle_panning_zooming(&ctx, self);
         tick_animation(self);
 
-        egui::SidePanel::left("controls_panel").show(ctx, |ui| {
+        egui::SidePanel::left("controls_panel").show(&ctx, |ui| {
             ui.heading("Maze Controls");
 
             ui.label("Algorithm:");
@@ -217,7 +219,7 @@ impl App for MyApp {
             ui.label("Click: set start/end cells");
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(&ctx, |ui| {
             ui.heading("Maze Renderer");
             ui.separator();
 
