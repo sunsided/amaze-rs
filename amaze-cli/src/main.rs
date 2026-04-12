@@ -135,7 +135,7 @@ fn main() {
                         .help("winding probability (0-99), only affects winding type")
                         .display_order(5)
                         .default_value("50")
-                        .value_parser(value_parser!(u8))
+                        .value_parser(clap::value_parser!(u8).range(0..=99))
                         .action(ArgAction::Set),
                 )
                 .arg(

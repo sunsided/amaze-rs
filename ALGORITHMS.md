@@ -74,7 +74,9 @@ All maze generators expose `generate_steps()` which yields `GenerationStep` even
 `DungeonWalkGenerator.generate_steps()` yields `DungeonGenerationStep` events:
 
 - `PlaceFloor { coord }` - Place a single floor tile
+- `PlaceWall { coord }` - Place a wall tile during post-processing
 - `StampRoom { center, half_width, half_height }` - Stamp a rectangular room
+- `SetExit { coord }` - Mark the exit position
 - `Complete` - Generation finished
 
 These events can be consumed by GUIs and visualizers for progressive rendering.

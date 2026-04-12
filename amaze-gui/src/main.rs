@@ -267,7 +267,7 @@ impl App for MyApp {
                 if self.dungeon_type == DungeonType::Winding {
                     ui.label("Winding Probability (%):");
                     if ui
-                        .add(egui::Slider::new(&mut self.winding_probability, 0..=100))
+                        .add(egui::Slider::new(&mut self.winding_probability, 0..=99))
                         .changed()
                     {
                         regenerate_dungeon(self);

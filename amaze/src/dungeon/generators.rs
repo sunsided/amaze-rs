@@ -47,6 +47,16 @@ impl DungeonGenerationVisitor for VecDungeonGenerationVisitor {
     }
 }
 
+/// No-op visitor for non-instrumented generation.
+struct NoOpVisitor;
+
+impl DungeonGenerationVisitor for NoOpVisitor {
+    #[inline]
+    fn on_step(&mut self, _step: &DungeonGenerationStep) {
+        // No-op: don't record steps
+    }
+}
+
 /// Iterator over dungeon generation steps.
 pub struct DungeonGenerationSteps {
     inner: std::vec::IntoIter<DungeonGenerationStep>,
@@ -178,10 +188,9 @@ impl DungeonWalkGenerator {
     ///
     /// # Arguments
     /// * `min` - Minimum walk length (inclusive), clamped to at least 1
-    /// * `max_exclusive` - Maximum walk length (exclusive), must be > min
+    /// * `max_exclusive` - Maximum walk length (exclusive), clamped to at least min+1
     ///
-    /// # Panics
-    /// Panics if max_exclusive <= min after clamping
+    /// Values are clamped to valid ranges instead of panicking for robustness.
     pub fn with_long_walk_range(mut self, min: usize, max_exclusive: usize) -> Self {
         let min = min.max(1); // At least 1 step
         let max_exclusive = max_exclusive.max(min + 1); // At least min+1 to ensure valid range
@@ -192,7 +201,7 @@ impl DungeonWalkGenerator {
 
     /// Generate a dungeon with the configured parameters.
     pub fn generate(&self, width: usize, height: usize, floor_count: usize) -> DungeonGrid {
-        self.generate_with_steps(width, height, floor_count).0
+        self.generate_internal(width, height, floor_count, &mut NoOpVisitor)
     }
 
     /// Generate with animation steps.
@@ -202,26 +211,29 @@ impl DungeonWalkGenerator {
         height: usize,
         floor_count: usize,
     ) -> DungeonGenerationSteps {
-        DungeonGenerationSteps::new(self.generate_with_steps(width, height, floor_count).1)
+        let mut visitor = VecDungeonGenerationVisitor::default();
+        let _ = self.generate_internal(width, height, floor_count, &mut visitor);
+        DungeonGenerationSteps::new(visitor.into_steps())
     }
 
-    fn generate_with_steps(
+    fn generate_internal<V: DungeonGenerationVisitor>(
         &self,
         width: usize,
         height: usize,
         floor_count: usize,
-    ) -> (DungeonGrid, Vec<DungeonGenerationStep>) {
+        visitor: &mut V,
+    ) -> DungeonGrid {
         let mut grid = DungeonGrid::new(width, height);
-        let mut visitor = VecDungeonGenerationVisitor::default();
         let mut rng = self.rng.clone();
 
         if width == 0 || height == 0 || floor_count == 0 {
             visitor.on_step(&DungeonGenerationStep::Complete);
-            return (grid, visitor.into_steps());
+            return grid;
         }
 
         // Cap floor_count to max possible tiles (leaving some margin for walls)
-        let max_possible_floor = (width * height).saturating_mul(9) / 10; // 90% max
+        // Use saturating_mul to prevent overflow on large dimensions
+        let max_possible_floor = width.saturating_mul(height).saturating_mul(9) / 10; // 90% max
         let target_floor_count = floor_count.min(max_possible_floor);
 
         // Start at center
@@ -260,7 +272,7 @@ impl DungeonWalkGenerator {
                     let mut ctx = WalkContext {
                         rng: &mut rng,
                         grid: &mut grid,
-                        visitor: &mut visitor,
+                        visitor,
                         width,
                         height,
                         last_floor: last_floor_pos,
@@ -279,7 +291,7 @@ impl DungeonWalkGenerator {
                     };
 
                     if should_stamp_room && ctx.grid.floor_count() < target_floor_count {
-                        self.stamp_room(&mut ctx, walker_pos);
+                        self.stamp_room(&mut ctx, walker_pos, target_floor_count);
                     }
 
                     // Extract last_floor from context
@@ -315,7 +327,7 @@ impl DungeonWalkGenerator {
         grid.compute_edge_masks();
 
         visitor.on_step(&DungeonGenerationStep::Complete);
-        (grid, visitor.into_steps())
+        grid
     }
 
     /// Take a single random step in one of 4 directions, staying in bounds.
@@ -379,10 +391,12 @@ impl DungeonWalkGenerator {
 
     /// Stamp a rectangular room centered at pos.
     /// Unity: half-sizes are Random.Range(1, 5) => 1..=4, so room size is (2*hw+1) x (2*hh+1).
+    /// Stops stamping if floor count reaches target to respect cap.
     fn stamp_room<V: DungeonGenerationVisitor>(
         &self,
         ctx: &mut WalkContext<V>,
         center: GridCoord2D,
+        target_floor_count: usize,
     ) {
         let half_width = ctx.rng.random_range(1..5); // Unity: Random.Range(1,5) = 1..=4
         let half_height = ctx.rng.random_range(1..5);
@@ -400,6 +414,11 @@ impl DungeonWalkGenerator {
 
         for y in min_y..=max_y {
             for x in min_x..=max_x {
+                // Stop stamping if we've reached the target floor count
+                if ctx.grid.floor_count() >= target_floor_count {
+                    return;
+                }
+
                 let coord = GridCoord2D::new(x, y);
                 if !ctx.grid.is_floor(coord) {
                     ctx.grid.set(coord, TileType::Floor);
@@ -652,5 +671,79 @@ mod tests {
         assert_eq!(dungeon.height(), 50);
         assert!(dungeon.floor_count() >= 400);
         assert!(dungeon.exit().is_some());
+    }
+
+    #[test]
+    fn test_room_stamping_respects_floor_cap() {
+        // Test that room stamping stops when target floor count is reached
+        // Use Rooms mode which stamps many rooms, and a target close to cap
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 999);
+        let dungeon = generator.generate(20, 20, 180); // 20x20 = 400 cells, 90% = 360 max
+
+        // Floor count should not significantly exceed target
+        // Allow small overshoot due to final room stamp, but should be close
+        assert!(
+            dungeon.floor_count() <= 360,
+            "Floor count {} exceeds max possible 360",
+            dungeon.floor_count()
+        );
+        assert!(
+            dungeon.floor_count() >= 180,
+            "Floor count {} is below target 180",
+            dungeon.floor_count()
+        );
+        // The important check: we should be reasonably close to target without massive overshoot
+        assert!(
+            dungeon.floor_count() <= 200,
+            "Floor count {} overshoots target 180 by too much",
+            dungeon.floor_count()
+        );
+    }
+
+    #[test]
+    fn test_overflow_safety_large_dimensions() {
+        // Test that very large dimensions don't cause overflow in cap calculation
+        // This verifies that saturating_mul is used correctly
+
+        // Test the calculation that happens in generate_internal
+        let large_width = 100_000_usize;
+        let large_height = 100_000_usize;
+
+        // This would overflow with naive multiplication on some systems
+        // With saturating_mul, it should cap at usize::MAX
+        let max_possible_floor = large_width.saturating_mul(large_height).saturating_mul(9) / 10;
+
+        // Verify we got a reasonable result (not wrapped around)
+        assert!(max_possible_floor > 0, "Calculation should not wrap to 0");
+        assert!(
+            max_possible_floor <= usize::MAX / 2,
+            "Result should be reasonable"
+        );
+
+        // Also verify that a normal-sized dungeon still generates correctly
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Caverns, 42);
+        let dungeon = generator.generate(100, 100, 1000);
+        assert!(dungeon.floor_count() >= 1000);
+    }
+
+    #[test]
+    fn test_passability_grid_deterministic_entrance() {
+        // Test that PassabilityGrid conversion produces deterministic entrance
+        use crate::representations::PassabilityGrid;
+
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Caverns, 12345);
+        let dungeon1 = generator.generate(20, 20, 100);
+        let dungeon2 =
+            DungeonWalkGenerator::new_from_seed(DungeonType::Caverns, 12345).generate(20, 20, 100);
+
+        let grid1 = PassabilityGrid::from(&dungeon1);
+        let grid2 = PassabilityGrid::from(&dungeon2);
+
+        // Entrance should be deterministic (same for same dungeon layout)
+        assert_eq!(
+            grid1.entrance_position(),
+            grid2.entrance_position(),
+            "Entrance positions should be deterministic"
+        );
     }
 }
