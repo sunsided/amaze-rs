@@ -1,0 +1,99 @@
+version: "3"
+
+vars:
+  DEFAULT_STYLE: double
+  DEFAULT_SEED: "1337"
+  DEFAULT_WIDTH: "18"
+  DEFAULT_HEIGHT: "24"
+
+tasks:
+  fmt:
+    desc: Format the code
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - cargo fmt
+
+  lint:
+    desc: Lint the code
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - cargo clippy --fix --allow-staged
+
+  test:
+    desc: Run all tests
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - cargo test -p amaze
+
+  build:
+    desc: Build the workspace
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    sources:
+      - Cargo.lock
+      - Cargo.toml
+      - amaze/Cargo.toml
+      - amaze-cli/Cargo.toml
+      - amaze-gui/Cargo.toml
+      - amaze/src/**/*.rs
+      - amaze-cli/src/**/*.rs
+      - amaze-gui/src/**/*.rs
+    generates:
+      - target/debug/amaze-cli
+      - target/debug/amaze-gui
+    cmds:
+      - cargo build
+
+  show-gui:
+    desc: Show the maze GUI
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - cargo run --bin amaze-gui
+
+  show-example:
+    desc: Render a maze in terminal output
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - >-
+        cargo run --bin amaze-cli -- gen
+        --seed {{default .DEFAULT_SEED .SEED}}
+        --width {{default .DEFAULT_WIDTH .WIDTH}}
+        --height {{default .DEFAULT_HEIGHT .HEIGHT}}
+        --style {{default .DEFAULT_STYLE .STYLE}}
+
+  show-example-ppm:
+    desc: Render a maze in PPM format
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - >-
+        cargo run --bin amaze-cli -- gen
+        --seed {{default .DEFAULT_SEED .SEED}}
+        --width {{default .DEFAULT_WIDTH .WIDTH}}
+        --height {{default .DEFAULT_HEIGHT .HEIGHT}}
+        --style ppm | tee test.ppm
+
+  show-example-pbm:
+    desc: Render a maze in PBM format
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
+    cmds:
+      - >-
+        cargo run --bin amaze-cli -- gen
+        --seed {{default .DEFAULT_SEED .SEED}}
+        --width {{default .DEFAULT_WIDTH .WIDTH}}
+        --height {{default .DEFAULT_HEIGHT .HEIGHT}}
+        --style pbm | tee test.pbm
