@@ -56,13 +56,17 @@ impl ImageRenderer {
     /// Returns the image data as a `String`.
     ///
     /// ## Example
-    /// ```
-    /// # use amaze::renderers::{ImageRenderer, ImageFormat};
-    /// # use amaze::generators::RecursiveBacktracker4;
-    /// # let gen = RecursiveBacktracker4::default();
-    /// # let grid = gen.generate(6, 6);
+    /// ```rust
+    /// use amaze::renderers::{ImageFormat, ImageRenderer};
+    /// use amaze::generators::RecursiveBacktracker4;
+    ///
+    /// fn main() {
+    /// let generator = RecursiveBacktracker4::default();
+    /// let grid = generator.generate(6, 6);
     /// let renderer = ImageRenderer::new(ImageFormat::PBM);
     /// let image_data = renderer.render(&grid);
+    /// assert!(!image_data.is_empty());
+    /// }
     /// ```
     pub fn render(&self, grid: &Wall4Grid) -> String {
         match self.format {

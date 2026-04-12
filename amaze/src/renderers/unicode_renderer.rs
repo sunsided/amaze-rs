@@ -91,90 +91,66 @@ pub enum UnicodeRenderStyle {
     /// Renders the grid as thin unicode lines.
     ///
     /// ## Example
-    /// ```
-    /// use amaze::renderers::{UnicodeRenderer, UnicodeRenderStyle};
+    /// ```rust
+    /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+    /// fn main() {
     ///
-    /// let gen = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-    /// let grid = gen.generate(6, 6);
+    /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+    /// let grid = generator.generate(6, 6);
     ///
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Thin, true);
-    /// assert_eq!(renderer.render(&grid), indoc::indoc!(
-    ///     "
-    ///     ╷╶┬──┐
-    ///     └┐│┌┐╵
-    ///     ╷│├┘└┐
-    ///     ├┘└─╴│
-    ///     └─┐┌─┤
-    ///     ╶─┴┘╶┘
-    ///     "
-    ///     ));
+    /// let expected = "╷┌───┐\n│├──┐╵\n│└─┐└┐\n└─┐╵┌┤\n┌╴│┌┘│\n└─┴┘╶┘\n";
+    /// assert_eq!(renderer.render(&grid), expected);
+    /// }
     /// ```
     Thin,
     /// Renders the grid as double unicode lines.
     ///
     /// ## Example
-    /// ```
-    /// use amaze::renderers::{UnicodeRenderer, UnicodeRenderStyle};
+    /// ```rust
+    /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+    /// fn main() {
     ///
-    /// let gen = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-    /// let grid = gen.generate(6, 6);
+    /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+    /// let grid = generator.generate(6, 6);
     ///
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Double, true);
-    /// assert_eq!(renderer.render(&grid), indoc::indoc!(
-    ///     "
-    ///     ╥╞╦══╗
-    ///     ╚╗║╔╗╨
-    ///     ╥║╠╝╚╗
-    ///     ╠╝╚═╡║
-    ///     ╚═╗╔═╣
-    ///     ╞═╩╝╞╝
-    ///     "
-    ///     ));
+    /// let expected = "╥╔═══╗\n║╠══╗╨\n║╚═╗╚╗\n╚═╗╨╔╣\n╔╡║╔╝║\n╚═╩╝╞╝\n";
+    /// assert_eq!(renderer.render(&grid), expected);
+    /// }
     /// ```
     Double,
     /// Renders the grid as bold unicode lines.
     ///
     /// ## Example
-    /// ```
-    /// use amaze::renderers::{UnicodeRenderer, UnicodeRenderStyle};
+    /// ```rust
+    /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+    /// fn main() {
     ///
-    /// let gen = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-    /// let grid = gen.generate(6, 6);
+    /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+    /// let grid = generator.generate(6, 6);
     ///
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
-    /// assert_eq!(renderer.render(&grid), indoc::indoc!(
-    ///     "
-    ///     ╻╺┳━━┓
-    ///     ┗┓┃┏┓╹
-    ///     ╻┃┣┛┗┓
-    ///     ┣┛┗━╸┃
-    ///     ┗━┓┏━┫
-    ///     ╺━┻┛╺┛
-    ///     "
-    ///     ));
+    /// let expected = "╻┏━━━┓\n┃┣━━┓╹\n┃┗━┓┗┓\n┗━┓╹┏┫\n┏╸┃┏┛┃\n┗━┻┛╺┛\n";
+    /// assert_eq!(renderer.render(&grid), expected);
+    /// }
     /// ```
     Heavy,
     /// Renders the grid as hexadecimal values encoding the directions.
     ///
     /// ## Example
-    /// ```
-    /// use amaze::renderers::{UnicodeRenderer, UnicodeRenderStyle};
+    /// ```rust
+    /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+    /// fn main() {
     ///
-    /// let gen = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-    /// let grid = gen.generate(6, 6);
+    /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+    /// let grid = generator.generate(6, 6);
     ///
     /// // With line breaks:
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, true);
-    /// assert_eq!(renderer.render(&grid), indoc::indoc!(
-    ///     "
-    ///     24ECCA
-    ///     5A36A1
-    ///     23795A
-    ///     795C83
-    ///     5CA6CB
-    ///     4CD949
-    ///     "
-    ///     ));
+    /// let expected = "26CCCA\n37CCA1\n35CA5A\n5CA16B\n683693\n5CD949\n";
+    /// assert_eq!(renderer.render(&grid), expected);
+    /// }
     /// ```
     Hexadecimal,
 }
@@ -189,27 +165,21 @@ impl UnicodeRenderer {
     /// Creates a new renderer with the given style and optional line breaks.
     ///
     /// ## Example
-    /// ```
-    /// use amaze::renderers::{UnicodeRenderer, UnicodeRenderStyle};
+    /// ```rust
+    /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
+    /// fn main() {
     ///
-    /// let gen = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-    /// let grid = gen.generate(6, 6);
+    /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+    /// let grid = generator.generate(6, 6);
     ///
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
-    /// assert_eq!(renderer.render(&grid), indoc::indoc!(
-    ///     "
-    ///     ╻╺┳━━┓
-    ///     ┗┓┃┏┓╹
-    ///     ╻┃┣┛┗┓
-    ///     ┣┛┗━╸┃
-    ///     ┗━┓┏━┫
-    ///     ╺━┻┛╺┛
-    ///     "
-    ///     ));
+    /// let expected = "╻┏━━━┓\n┃┣━━┓╹\n┃┗━┓┗┓\n┗━┓╹┏┫\n┏╸┃┏┛┃\n┗━┻┛╺┛\n";
+    /// assert_eq!(renderer.render(&grid), expected);
     ///
     /// // Without line breaks:
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, false);
-    /// assert_eq!(renderer.render(&grid), "╻╺┳━━┓┗┓┃┏┓╹╻┃┣┛┗┓┣┛┗━╸┃┗━┓┏━┫╺━┻┛╺┛");
+    /// assert_eq!(renderer.render(&grid), "╻┏━━━┓┃┣━━┓╹┃┗━┓┗┓┗━┓╹┏┫┏╸┃┏┛┃┗━┻┛╺┛");
+    /// }
     /// ```
     pub fn new(style: UnicodeRenderStyle, line_breaks: bool) -> Self {
         Self {
@@ -263,12 +233,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╻╺┳━━┓
-            ┗┓┃┏┓╹
-            ╻┃┣┛┗┓
-            ┣┛┗━╸┃
-            ┗━┓┏━┫
-            ╺━┻┛╺┛
+            ╻┏━━━┓
+            ┃┣━━┓╹
+            ┃┗━┓┗┓
+            ┗━┓╹┏┫
+            ┏╸┃┏┛┃
+            ┗━┻┛╺┛
             "
         );
         assert_eq!(str, expected);
@@ -283,12 +253,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╥╞╦══╗
-            ╚╗║╔╗╨
-            ╥║╠╝╚╗
-            ╠╝╚═╡║
-            ╚═╗╔═╣
-            ╞═╩╝╞╝
+            ╥╔═══╗
+            ║╠══╗╨
+            ║╚═╗╚╗
+            ╚═╗╨╔╣
+            ╔╡║╔╝║
+            ╚═╩╝╞╝
             "
         );
         assert_eq!(str, expected);
@@ -303,12 +273,12 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            ╷╶┬──┐
-            └┐│┌┐╵
-            ╷│├┘└┐
-            ├┘└─╴│
-            └─┐┌─┤
-            ╶─┴┘╶┘
+            ╷┌───┐
+            │├──┐╵
+            │└─┐└┐
+            └─┐╵┌┤
+            ┌╴│┌┘│
+            └─┴┘╶┘
             "
         );
         assert_eq!(str, expected);
@@ -323,19 +293,19 @@ mod tests {
         let str = renderer.render(&grid);
         let expected = indoc!(
             "
-            24ECCA
-            5A36A1
-            23795A
-            795C83
-            5CA6CB
-            4CD949
+            26CCCA
+            37CCA1
+            35CA5A
+            5CA16B
+            683693
+            5CD949
             "
         );
         assert_eq!(str, expected);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, false);
         let str = renderer.render(&grid);
-        let expected = "24ECCA5A36A123795A795C835CA6CB4CD949";
+        let expected = "26CCCA37CCA135CA5A5CA16B6836935CD949";
         assert_eq!(str, expected);
     }
 }
