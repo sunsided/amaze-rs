@@ -4,9 +4,9 @@ use crate::generators::{
 };
 use crate::grid_coord_2d::{GridCoord2D, LinearizeCoords2D};
 use crate::wall4_grid::Wall4Grid;
-use rand::SeedableRng;
 use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 pub struct Kruskal4 {
     rng: StdRng,

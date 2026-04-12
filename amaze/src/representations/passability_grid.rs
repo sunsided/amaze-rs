@@ -1,3 +1,4 @@
+use crate::dungeon::DungeonGrid;
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
 use crate::wall4_grid::Wall4Grid;
 use std::ops::Index;
@@ -130,6 +131,50 @@ impl From<&Wall4Grid> for PassabilityGrid {
         }
 
         grid
+    }
+}
+
+impl From<&DungeonGrid> for PassabilityGrid {
+    /// Convert a DungeonGrid to a PassabilityGrid.
+    /// Floor tiles map directly to passable cells (1:1 mapping, no inflation).
+    /// Entrance defaults to the first floor tile found, exit to dungeon's exit position.
+    fn from(dungeon: &DungeonGrid) -> Self {
+        let width = dungeon.width();
+        let height = dungeon.height();
+
+        let mut cells = vec![false; width * height];
+
+        // Mark floor tiles as passable
+        for y in 0..height {
+            for x in 0..width {
+                let coord = GridCoord2D::new(x, y);
+                if dungeon.is_floor(coord) {
+                    cells[y * width + x] = true;
+                }
+            }
+        }
+
+        // Find first floor tile for entrance (or use 0,0 as fallback)
+        let entrance = dungeon
+            .floor_iter()
+            .next()
+            .map(|c| (c.x, c.y))
+            .unwrap_or((0, 0));
+
+        // Use dungeon's exit position, or last floor tile, or fallback to (0,0)
+        let exit = dungeon
+            .exit()
+            .or_else(|| dungeon.floor_iter().last())
+            .map(|c| (c.x, c.y))
+            .unwrap_or((0, 0));
+
+        Self {
+            width,
+            height,
+            cells,
+            entrance,
+            exit,
+        }
     }
 }
 

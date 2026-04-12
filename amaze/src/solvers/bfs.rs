@@ -1,5 +1,5 @@
 use crate::grid_coord_2d::{GridCoord2D, LinearizeCoords2D};
-use crate::solvers::{MazeSolver, rebuild_path};
+use crate::solvers::{rebuild_path, MazeSolver};
 use crate::wall4_grid::Wall4Grid;
 use std::collections::VecDeque;
 

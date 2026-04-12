@@ -94,7 +94,7 @@ mod tests {
     #[should_panic(expected = "Linear index out of bounds")]
     fn linearize_coords_out_of_bounds_panics() {
         let grid = Wall4Grid::new(3, 3); // 3x3 grid
-        // This should panic as (3, 3) is out of bounds for 0-based indexing
+                                         // This should panic as (3, 3) is out of bounds for 0-based indexing
         grid.linearize_coords(GridCoord2D::new(3, 3));
     }
 }

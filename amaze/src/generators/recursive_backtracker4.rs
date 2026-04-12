@@ -4,9 +4,9 @@ use crate::generators::{
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
-use rand::SeedableRng;
 use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 /// A maze generator that implements the Recursive Backtracking algorithm.
 pub struct RecursiveBacktracker4 {

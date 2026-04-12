@@ -79,16 +79,12 @@ mod tests {
         let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
         let adjacency = AdjacencyList::from(&maze);
 
-        assert!(
-            adjacency
-                .get_neighbors(GridCoord2D::new(adjacency.width, 0))
-                .is_none()
-        );
-        assert!(
-            adjacency
-                .get_neighbors(GridCoord2D::new(0, adjacency.height))
-                .is_none()
-        );
+        assert!(adjacency
+            .get_neighbors(GridCoord2D::new(adjacency.width, 0))
+            .is_none());
+        assert!(adjacency
+            .get_neighbors(GridCoord2D::new(0, adjacency.height))
+            .is_none());
     }
 
     #[test]
