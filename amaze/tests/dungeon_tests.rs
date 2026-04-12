@@ -3,7 +3,7 @@
 #[cfg(all(feature = "representations", feature = "solvers"))]
 #[cfg(test)]
 mod dungeon_solver_tests {
-    use amaze::dungeon::{solve_astar, solve_bfs, DungeonType, DungeonWalkGenerator};
+    use amaze::dungeon::{DungeonType, DungeonWalkGenerator, solve_astar, solve_bfs};
     use amaze::preamble::*;
     use std::collections::{HashSet, VecDeque};
 

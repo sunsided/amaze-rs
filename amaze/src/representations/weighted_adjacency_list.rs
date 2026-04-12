@@ -83,10 +83,11 @@ mod tests {
         let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
         let list = WeightedAdjacencyList::from(&maze);
 
-        assert!(list
-            .neighbors
-            .iter()
-            .all(|neighbors| neighbors.iter().all(|(_, weight)| *weight == 1.0)));
+        assert!(
+            list.neighbors
+                .iter()
+                .all(|neighbors| neighbors.iter().all(|(_, weight)| *weight == 1.0))
+        );
     }
 
     #[test]
@@ -108,12 +109,14 @@ mod tests {
         let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
         let list = WeightedAdjacencyList::from(&maze);
 
-        assert!(list
-            .get_neighbors(GridCoord2D::new(list.width, 0))
-            .is_none());
-        assert!(list
-            .get_neighbors(GridCoord2D::new(0, list.height))
-            .is_none());
+        assert!(
+            list.get_neighbors(GridCoord2D::new(list.width, 0))
+                .is_none()
+        );
+        assert!(
+            list.get_neighbors(GridCoord2D::new(0, list.height))
+                .is_none()
+        );
     }
 
     #[test]

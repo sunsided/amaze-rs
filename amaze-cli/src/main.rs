@@ -5,7 +5,7 @@ use amaze::generators::{
 };
 use amaze::preamble::*;
 use amaze::renderers::{ImageRenderer, RenderStyle, UnicodeRenderer};
-use clap::{value_parser, Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, value_parser};
 
 fn main() {
     let matches = Command::new("amaze-cli")
@@ -137,6 +137,24 @@ fn main() {
                         .default_value("50")
                         .value_parser(value_parser!(u8))
                         .action(ArgAction::Set),
+                )
+                .arg(
+                    Arg::new("long-walk-min")
+                        .long("long-walk-min")
+                        .help("minimum long walk distance (only affects rooms/winding types)")
+                        .display_order(6)
+                        .default_value("9")
+                        .value_parser(value_parser!(usize))
+                        .action(ArgAction::Set),
+                )
+                .arg(
+                    Arg::new("long-walk-max")
+                        .long("long-walk-max")
+                        .help("maximum long walk distance (exclusive, only affects rooms/winding types)")
+                        .display_order(7)
+                        .default_value("18")
+                        .value_parser(value_parser!(usize))
+                        .action(ArgAction::Set),
                 ),
         )
         .get_matches();
@@ -210,6 +228,12 @@ fn main() {
             let winding_probability = *dungeon_matches
                 .get_one::<u8>("winding-probability")
                 .expect("defaulted");
+            let long_walk_min = *dungeon_matches
+                .get_one::<usize>("long-walk-min")
+                .expect("defaulted");
+            let long_walk_max = *dungeon_matches
+                .get_one::<usize>("long-walk-max")
+                .expect("defaulted");
 
             let dungeon_type_str = dungeon_matches
                 .get_one::<String>("type")
@@ -223,6 +247,7 @@ fn main() {
 
             let dungeon = DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
                 .with_winding_probability(winding_probability)
+                .with_long_walk_range(long_walk_min, long_walk_max)
                 .generate(width, height, floor_count);
 
             println!("{}", render_dungeon(&dungeon));

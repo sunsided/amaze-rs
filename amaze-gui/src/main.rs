@@ -1,12 +1,10 @@
-use amaze::dungeon::{
-    solve_bfs, DungeonGrid, DungeonType, DungeonWalkGenerator, TileType,
-};
+use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType, solve_bfs};
 use amaze::generators::{
     BinaryTree4, Eller4, GenerationStep, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::*;
-use eframe::{egui, epaint::Color32, App, Frame, NativeOptions};
+use eframe::{App, Frame, NativeOptions, egui, epaint::Color32};
 use std::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -54,6 +52,8 @@ struct MyApp {
     dungeon_type: DungeonType,
     floor_count: usize,
     winding_probability: u8,
+    long_walk_min: usize,
+    long_walk_max: usize,
     zoom: f32,
     pan: egui::Vec2,
     dragging: bool,
@@ -81,6 +81,8 @@ impl Default for MyApp {
             initial_height,
             120,
             50,
+            9,
+            18,
         );
 
         Self {
@@ -95,6 +97,8 @@ impl Default for MyApp {
             dungeon_type: DungeonType::Rooms,
             floor_count: 120,
             winding_probability: 50,
+            long_walk_min: 9,
+            long_walk_max: 18,
             zoom: 1.0,
             pan: egui::Vec2::new(0.0, 0.0),
             dragging: false,
@@ -222,12 +226,48 @@ impl App for MyApp {
                 if ui
                     .add(
                         egui::DragValue::new(&mut self.floor_count)
-                            .range(50..=500)
+                            .range(50..=5000)
                             .speed(5.0),
                     )
                     .changed()
                 {
                     regenerate_dungeon(self);
+                }
+
+                if self.dungeon_type == DungeonType::Rooms
+                    || self.dungeon_type == DungeonType::Winding
+                {
+                    ui.label("Long Walk Min:");
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut self.long_walk_min)
+                                .range(1..=50)
+                                .speed(1.0),
+                        )
+                        .changed()
+                    {
+                        // Ensure max > min
+                        if self.long_walk_max <= self.long_walk_min {
+                            self.long_walk_max = self.long_walk_min + 1;
+                        }
+                        regenerate_dungeon(self);
+                    }
+
+                    ui.label("Long Walk Max:");
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut self.long_walk_max)
+                                .range(2..=100)
+                                .speed(1.0),
+                        )
+                        .changed()
+                    {
+                        // Ensure max > min
+                        if self.long_walk_max <= self.long_walk_min {
+                            self.long_walk_min = self.long_walk_max - 1;
+                        }
+                        regenerate_dungeon(self);
+                    }
                 }
 
                 if self.dungeon_type == DungeonType::Winding {
@@ -425,9 +465,12 @@ fn generate_dungeon(
     height: usize,
     floor_count: usize,
     winding_probability: u8,
+    long_walk_min: usize,
+    long_walk_max: usize,
 ) -> DungeonGrid {
     DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
         .with_winding_probability(winding_probability)
+        .with_long_walk_range(long_walk_min, long_walk_max)
         .generate(width, height, floor_count)
 }
 
@@ -454,6 +497,8 @@ fn regenerate_dungeon(app: &mut MyApp) {
         app.height,
         app.floor_count,
         app.winding_probability,
+        app.long_walk_min,
+        app.long_walk_max,
     );
 }
 
@@ -714,7 +759,6 @@ fn render_dungeon(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
         }
     }
 }
-
 
 fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
     let base_cell_size = 30.0;

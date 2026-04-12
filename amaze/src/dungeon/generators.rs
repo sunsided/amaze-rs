@@ -120,6 +120,12 @@ pub struct DungeonWalkGenerator {
     /// Winding hall probability (0-99). Only used for Winding type.
     /// Probability of creating a room is (99 - winding_hall_probability) / 100.
     winding_hall_probability: u8,
+    /// Minimum long walk distance (inclusive). Only used for Rooms/Winding types.
+    /// Unity default: 9
+    long_walk_min: usize,
+    /// Maximum long walk distance (exclusive upper bound). Only used for Rooms/Winding types.
+    /// Unity default: 18 (so range is 9..18, meaning 9-17 inclusive)
+    long_walk_max: usize,
 }
 
 impl DungeonWalkGenerator {
@@ -129,6 +135,8 @@ impl DungeonWalkGenerator {
             rng: StdRng::from_os_rng(),
             dungeon_type,
             winding_hall_probability: 50, // Default Unity value
+            long_walk_min: 9,             // Default Unity value
+            long_walk_max: 18,            // Default Unity value (exclusive upper bound)
         }
     }
 
@@ -144,12 +152,31 @@ impl DungeonWalkGenerator {
             rng,
             dungeon_type,
             winding_hall_probability: 50,
+            long_walk_min: 9,
+            long_walk_max: 18,
         }
     }
 
     /// Set the winding hall probability (0-99). Only affects Winding type.
     pub fn with_winding_probability(mut self, probability: u8) -> Self {
         self.winding_hall_probability = probability.min(99);
+        self
+    }
+
+    /// Set the long walk range (min, max_exclusive). Only affects Rooms/Winding types.
+    /// The walk length will be randomly chosen from [min, max_exclusive).
+    ///
+    /// # Arguments
+    /// * `min` - Minimum walk length (inclusive), clamped to at least 1
+    /// * `max_exclusive` - Maximum walk length (exclusive), must be > min
+    ///
+    /// # Panics
+    /// Panics if max_exclusive <= min after clamping
+    pub fn with_long_walk_range(mut self, min: usize, max_exclusive: usize) -> Self {
+        let min = min.max(1); // At least 1 step
+        let max_exclusive = max_exclusive.max(min + 1); // At least min+1 to ensure valid range
+        self.long_walk_min = min;
+        self.long_walk_max = max_exclusive;
         self
     }
 
@@ -305,6 +332,7 @@ impl DungeonWalkGenerator {
     }
 
     /// Take a long walk (Unity: Random.Range(9, 18) => 9..=17 steps).
+    /// Unity picks one direction and walks straight in that direction.
     fn take_long_walk<V: DungeonGenerationVisitor>(
         &self,
         rng: &mut StdRng,
@@ -315,11 +343,25 @@ impl DungeonWalkGenerator {
         height: usize,
         last_floor: &mut GridCoord2D,
     ) -> GridCoord2D {
-        let walk_length = rng.random_range(9..18); // Unity: Random.Range(9,18) = 9..=17
+        let walk_length = rng.random_range(self.long_walk_min..self.long_walk_max);
+
+        // Pick ONE direction for this entire long walk (Unity behavior)
+        let directions: [(isize, isize); 4] = [
+            (0, -1), // up
+            (1, 0),  // right
+            (0, 1),  // down
+            (-1, 0), // left
+        ];
+        let &(dx, dy) = directions.choose(rng).unwrap();
+
         let mut pos = start;
 
+        // Walk straight in that direction for walk_length steps
         for _ in 0..walk_length {
-            pos = self.take_step(rng, pos, width, height);
+            let new_x = (pos.x as isize + dx).max(0).min(width as isize - 1) as usize;
+            let new_y = (pos.y as isize + dy).max(0).min(height as isize - 1) as usize;
+            pos = GridCoord2D::new(new_x, new_y);
+
             if !grid.is_floor(pos) {
                 grid.set(pos, TileType::Floor);
                 visitor.on_step(&DungeonGenerationStep::PlaceFloor { coord: pos });
@@ -477,6 +519,135 @@ mod tests {
         assert_eq!(dungeon.height(), 10);
         assert!(dungeon.floor_count() > 0);
         assert!(dungeon.floor_count() <= 90); // Max 90% of 100 cells
+        assert!(dungeon.exit().is_some());
+    }
+
+    #[test]
+    fn test_long_walk_range_configuration() {
+        // Test that long walk range can be configured
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 42)
+            .with_long_walk_range(15, 25);
+        let dungeon = generator.generate(50, 50, 300);
+
+        assert_eq!(dungeon.width(), 50);
+        assert_eq!(dungeon.height(), 50);
+        assert!(dungeon.floor_count() >= 300);
+        assert!(dungeon.exit().is_some());
+    }
+
+    #[test]
+    fn test_long_walk_range_validation() {
+        // Test that invalid ranges are clamped
+        let generator =
+            DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 42).with_long_walk_range(0, 1); // min=0 should be clamped to 1
+
+        // Should not panic and should generate valid dungeon
+        let dungeon = generator.generate(30, 30, 150);
+        assert!(dungeon.floor_count() >= 150);
+    }
+
+    #[test]
+    fn test_rooms_spread_with_directional_walk() {
+        // Test that Rooms mode produces spread-out layout on larger maps
+        // Using a large enough map to see spreading behavior
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 12345);
+        let dungeon = generator.generate(60, 60, 500);
+
+        assert_eq!(dungeon.width(), 60);
+        assert_eq!(dungeon.height(), 60);
+        assert!(dungeon.floor_count() >= 500);
+
+        // Calculate the bounding box of floor tiles to measure spread
+        let mut min_x = dungeon.width();
+        let mut max_x = 0;
+        let mut min_y = dungeon.height();
+        let mut max_y = 0;
+
+        for y in 0..dungeon.height() {
+            for x in 0..dungeon.width() {
+                let coord = GridCoord2D::new(x, y);
+                if dungeon.is_floor(coord) {
+                    min_x = min_x.min(x);
+                    max_x = max_x.max(x);
+                    min_y = min_y.min(y);
+                    max_y = max_y.max(y);
+                }
+            }
+        }
+
+        let spread_x = max_x - min_x;
+        let spread_y = max_y - min_y;
+
+        // With directional long walks, rooms should spread across more than
+        // just a small central area. Expect spread > 20 tiles in each dimension.
+        assert!(
+            spread_x > 20,
+            "X spread {} too small, indicates clustering",
+            spread_x
+        );
+        assert!(
+            spread_y > 20,
+            "Y spread {} too small, indicates clustering",
+            spread_y
+        );
+    }
+
+    #[test]
+    fn test_determinism_with_long_walk_fix() {
+        // Test that the new directional long walk maintains determinism
+        let generator1 = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 99999);
+        let generator2 = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 99999);
+
+        let d1 = generator1.generate(40, 40, 300);
+        let d2 = generator2.generate(40, 40, 300);
+
+        // Compare floor positions
+        let floors1: Vec<_> = d1.floor_iter().collect();
+        let floors2: Vec<_> = d2.floor_iter().collect();
+
+        assert_eq!(floors1.len(), floors2.len(), "Floor counts should match");
+
+        // Verify all floor positions match
+        for coord in floors1 {
+            assert!(d2.is_floor(coord), "Floor mismatch at {:?}", coord);
+        }
+
+        // Verify exits match
+        assert_eq!(d1.exit(), d2.exit(), "Exit positions should match");
+    }
+
+    #[test]
+    fn test_determinism_with_custom_walk_range() {
+        // Test determinism with custom walk range
+        let generator1 = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 54321)
+            .with_long_walk_range(5, 12);
+        let generator2 = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, 54321)
+            .with_long_walk_range(5, 12);
+
+        let d1 = generator1.generate(35, 35, 250);
+        let d2 = generator2.generate(35, 35, 250);
+
+        let floors1: Vec<_> = d1.floor_iter().collect();
+        let floors2: Vec<_> = d2.floor_iter().collect();
+
+        assert_eq!(floors1.len(), floors2.len());
+        for coord in floors1 {
+            assert!(d2.is_floor(coord), "Floor mismatch at {:?}", coord);
+        }
+    }
+
+    #[test]
+    fn test_winding_with_long_walk() {
+        // Test that Winding mode works correctly with directional long walk
+        let generator = DungeonWalkGenerator::new_from_seed(DungeonType::Winding, 77777)
+            .with_winding_probability(80) // High winding = fewer rooms
+            .with_long_walk_range(10, 20);
+
+        let dungeon = generator.generate(50, 50, 400);
+
+        assert_eq!(dungeon.width(), 50);
+        assert_eq!(dungeon.height(), 50);
+        assert!(dungeon.floor_count() >= 400);
         assert!(dungeon.exit().is_some());
     }
 }
