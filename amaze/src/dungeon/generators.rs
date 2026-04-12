@@ -201,7 +201,7 @@ impl DungeonWalkGenerator {
 
     /// Generate a dungeon with the configured parameters.
     pub fn generate(&self, width: usize, height: usize, floor_count: usize) -> DungeonGrid {
-        self.generate_internal(width, height, floor_count, &mut NoOpVisitor)
+        self.generate_internal(width, height, floor_count, &mut NoOpVisitor, false)
     }
 
     /// Generate with animation steps.
@@ -212,7 +212,7 @@ impl DungeonWalkGenerator {
         floor_count: usize,
     ) -> DungeonGenerationSteps {
         let mut visitor = VecDungeonGenerationVisitor::default();
-        let _ = self.generate_internal(width, height, floor_count, &mut visitor);
+        let _ = self.generate_internal(width, height, floor_count, &mut visitor, true);
         DungeonGenerationSteps::new(visitor.into_steps())
     }
 
@@ -222,6 +222,7 @@ impl DungeonWalkGenerator {
         height: usize,
         floor_count: usize,
         visitor: &mut V,
+        emit_wall_steps: bool,
     ) -> DungeonGrid {
         let mut grid = DungeonGrid::new(width, height);
         let mut rng = self.rng.clone();
@@ -246,7 +247,11 @@ impl DungeonWalkGenerator {
 
         // Track iterations to prevent infinite loops
         let mut iterations_since_progress = 0;
-        let max_stalled_iterations = 1000; // If no progress for 1000 iterations, give up
+        // Dynamic stall limit: scale with problem size
+        // Use target floor count as baseline, with minimum of 1000 and scaling by area
+        let max_stalled_iterations = target_floor_count
+            .max(width.saturating_mul(height) / 10)
+            .max(1000);
 
         // Generate floor tiles
         while grid.floor_count() < target_floor_count {
@@ -279,7 +284,7 @@ impl DungeonWalkGenerator {
                     };
 
                     // Take a long walk
-                    walker_pos = self.take_long_walk(&mut ctx, walker_pos);
+                    walker_pos = self.take_long_walk(&mut ctx, walker_pos, target_floor_count);
 
                     // Maybe stamp a room
                     let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
@@ -308,11 +313,13 @@ impl DungeonWalkGenerator {
         // Post-processing: place walls
         grid.place_walls();
         // Emit wall placement events for animation (optional, can be batched)
-        for y in 0..height {
-            for x in 0..width {
-                let coord = GridCoord2D::new(x, y);
-                if grid.get(coord).unwrap().is_wall() {
-                    visitor.on_step(&DungeonGenerationStep::PlaceWall { coord });
+        if emit_wall_steps {
+            for y in 0..height {
+                for x in 0..width {
+                    let coord = GridCoord2D::new(x, y);
+                    if grid.get(coord).unwrap().is_wall() {
+                        visitor.on_step(&DungeonGenerationStep::PlaceWall { coord });
+                    }
                 }
             }
         }
@@ -354,10 +361,12 @@ impl DungeonWalkGenerator {
 
     /// Take a long walk (Unity: Random.Range(9, 18) => 9..=17 steps).
     /// Unity picks one direction and walks straight in that direction.
+    /// Stops early if target floor count is reached.
     fn take_long_walk<V: DungeonGenerationVisitor>(
         &self,
         ctx: &mut WalkContext<V>,
         start: GridCoord2D,
+        target_floor_count: usize,
     ) -> GridCoord2D {
         let walk_length = ctx.rng.random_range(self.long_walk_min..self.long_walk_max);
 
@@ -374,6 +383,11 @@ impl DungeonWalkGenerator {
 
         // Walk straight in that direction for walk_length steps
         for _ in 0..walk_length {
+            // Stop early if we've reached the target floor count
+            if ctx.grid.floor_count() >= target_floor_count {
+                break;
+            }
+
             let new_x = (pos.x as isize + dx).max(0).min(ctx.width as isize - 1) as usize;
             let new_y = (pos.y as isize + dy).max(0).min(ctx.height as isize - 1) as usize;
             pos = GridCoord2D::new(new_x, new_y);

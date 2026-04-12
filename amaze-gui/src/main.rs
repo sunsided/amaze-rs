@@ -134,6 +134,11 @@ impl App for MyApp {
                 self.auto_fit_pending = true;
                 self.start_cell = None;
                 self.end_cell = None;
+                // Regenerate content for the new mode
+                match self.mode {
+                    Mode::Maze => regenerate_maze(self),
+                    Mode::Dungeon => regenerate_dungeon(self),
+                }
             }
 
             ui.separator();

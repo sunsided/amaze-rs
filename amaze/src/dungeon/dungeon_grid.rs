@@ -1,7 +1,7 @@
 use crate::dungeon::TileType;
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
 use std::collections::HashSet;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 /// Grid representation for procedurally generated dungeons.
 ///
@@ -26,7 +26,9 @@ pub struct DungeonGrid {
 impl DungeonGrid {
     /// Create a new dungeon grid with all tiles initialized to Empty.
     pub fn new(width: usize, height: usize) -> Self {
-        let size = width * height;
+        let size = width
+            .checked_mul(height)
+            .expect("Grid dimensions overflow: width * height exceeds usize::MAX");
         Self {
             width,
             height,
@@ -190,13 +192,6 @@ impl Index<GridCoord2D> for DungeonGrid {
 
     fn index(&self, coord: GridCoord2D) -> &Self::Output {
         &self.tiles[self.linearize_coords(coord)]
-    }
-}
-
-impl IndexMut<GridCoord2D> for DungeonGrid {
-    fn index_mut(&mut self, coord: GridCoord2D) -> &mut Self::Output {
-        let idx = self.linearize_coords(coord);
-        &mut self.tiles[idx]
     }
 }
 
