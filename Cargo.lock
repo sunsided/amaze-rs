@@ -156,7 +156,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "amaze"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "criterion",
  "indoc",
@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "amaze-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "amaze",
  "clap",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "amaze-gui"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "amaze",
  "eframe",
