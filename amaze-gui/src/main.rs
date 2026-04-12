@@ -3,7 +3,7 @@ use amaze::generators::{
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::*;
-use eframe::{egui, epaint::Color32, App, Frame, NativeOptions};
+use eframe::{App, Frame, NativeOptions, egui, epaint::Color32};
 use std::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -90,7 +90,7 @@ impl App for MyApp {
         handle_panning_zooming(&ctx, self);
         tick_animation(self);
 
-        egui::SidePanel::left("controls_panel").show(&ctx, |ui| {
+        egui::Panel::left("controls_panel").show_inside(ui, |ui| {
             ui.heading("Maze Controls");
 
             ui.label("Algorithm:");
@@ -219,7 +219,7 @@ impl App for MyApp {
             ui.label("Click: set start/end cells");
         });
 
-        egui::CentralPanel::default().show(&ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.heading("Maze Renderer");
             ui.separator();
 

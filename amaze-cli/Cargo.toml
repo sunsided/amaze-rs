@@ -2,7 +2,8 @@
 name = "amaze-cli"
 publish = false
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 
 [dependencies]
 amaze = { path = "../amaze", features = ["renderers"] }

@@ -27,7 +27,7 @@ pub struct RandomCell;
 
 impl CellSelector for RandomCell {
     fn select<R: Rng>(&self, rng: &mut R, frontier_len: usize) -> usize {
-        rng.gen_range(0..frontier_len)
+        rng.random_range(0..frontier_len)
     }
 }
 
@@ -46,10 +46,10 @@ impl Default for MixedCell {
 
 impl CellSelector for MixedCell {
     fn select<R: Rng>(&self, rng: &mut R, frontier_len: usize) -> usize {
-        if rng.gen_bool(self.newest_probability.clamp(0.0, 1.0)) {
+        if rng.random_bool(self.newest_probability.clamp(0.0, 1.0)) {
             frontier_len - 1
         } else {
-            rng.gen_range(0..frontier_len)
+            rng.random_range(0..frontier_len)
         }
     }
 }

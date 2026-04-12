@@ -33,7 +33,7 @@ impl Sidewinder4 {
                 visitor.on_step(&GenerationStep::Visit { cell });
                 let at_east_boundary = x + 1 == width;
                 let at_north_boundary = y == 0;
-                let carve_east = !at_east_boundary && (at_north_boundary || rng.gen_bool(0.5));
+                let carve_east = !at_east_boundary && (at_north_boundary || rng.random_bool(0.5));
 
                 if carve_east {
                     let east = GridCoord2D::new(x + 1, y);
@@ -43,7 +43,7 @@ impl Sidewinder4 {
                         to: east,
                     });
                 } else if !at_north_boundary {
-                    let carve_x = rng.gen_range(run_start..=x);
+                    let carve_x = rng.random_range(run_start..=x);
                     let from = GridCoord2D::new(carve_x, y);
                     let to = GridCoord2D::new(carve_x, y - 1);
                     grid.remove_wall_between(from, to);

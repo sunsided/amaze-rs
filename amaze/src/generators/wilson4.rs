@@ -21,7 +21,7 @@ impl Default for Wilson4 {
 impl Wilson4 {
     fn random_neighbor<R: Rng>(rng: &mut R, grid: &Wall4Grid, cell: GridCoord2D) -> GridCoord2D {
         let neighbors: Vec<_> = grid.neighbors(cell).collect();
-        neighbors[rng.gen_range(0..neighbors.len())]
+        neighbors[rng.random_range(0..neighbors.len())]
     }
 
     fn generate_with_steps(&self, width: usize, height: usize) -> (Wall4Grid, Vec<GenerationStep>) {
@@ -36,14 +36,14 @@ impl Wilson4 {
         let all_cells: Vec<_> = grid.coords().collect();
         let mut in_maze = VisitMap2D::new_like(&grid);
 
-        let first = all_cells[rng.gen_range(0..all_cells.len())];
+        let first = all_cells[rng.random_range(0..all_cells.len())];
         in_maze[first] = true;
         visitor.on_step(&GenerationStep::Visit { cell: first });
 
         while all_cells.iter().copied().any(|c| !in_maze[c]) {
-            let mut start = all_cells[rng.gen_range(0..all_cells.len())];
+            let mut start = all_cells[rng.random_range(0..all_cells.len())];
             while in_maze[start] {
-                start = all_cells[rng.gen_range(0..all_cells.len())];
+                start = all_cells[rng.random_range(0..all_cells.len())];
             }
 
             let mut walk = vec![start];

@@ -256,8 +256,8 @@ mod tests {
 
     #[test]
     fn heavy_works() {
-        let gen = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-        let grid = gen.generate(6, 6);
+        let generator = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+        let grid = generator.generate(6, 6);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
         let str = renderer.render(&grid);
@@ -276,8 +276,8 @@ mod tests {
 
     #[test]
     fn double_works() {
-        let gen = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-        let grid = gen.generate(6, 6);
+        let generator = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+        let grid = generator.generate(6, 6);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Double, true);
         let str = renderer.render(&grid);
@@ -296,8 +296,8 @@ mod tests {
 
     #[test]
     fn thin_works() {
-        let gen = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-        let grid = gen.generate(6, 6);
+        let generator = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+        let grid = generator.generate(6, 6);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Thin, true);
         let str = renderer.render(&grid);
@@ -316,8 +316,8 @@ mod tests {
 
     #[test]
     fn hex_works() {
-        let gen = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
-        let grid = gen.generate(6, 6);
+        let generator = RecursiveBacktracker4::new_from_seed(0xdeadbeef);
+        let grid = generator.generate(6, 6);
 
         let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, true);
         let str = renderer.render(&grid);

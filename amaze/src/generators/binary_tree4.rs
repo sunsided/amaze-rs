@@ -35,7 +35,7 @@ impl BinaryTree4 {
 
                 let target = match (can_north, can_east) {
                     (true, true) => {
-                        if rng.gen_bool(0.5) {
+                        if rng.random_bool(0.5) {
                             Some(GridCoord2D::new(x, y - 1))
                         } else {
                             Some(GridCoord2D::new(x + 1, y))

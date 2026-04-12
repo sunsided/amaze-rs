@@ -3,7 +3,7 @@ use amaze::generators::{
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::renderers::{ImageRenderer, RenderStyle, UnicodeRenderer};
-use clap::{value_parser, Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, value_parser};
 
 fn main() {
     let matches = Command::new("amaze-cli")

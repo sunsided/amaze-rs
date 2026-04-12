@@ -47,7 +47,7 @@ where
         }
 
         let mut rng = self.rng.clone();
-        let start = GridCoord2D::new(rng.gen_range(0..width), rng.gen_range(0..height));
+        let start = GridCoord2D::new(rng.random_range(0..width), rng.random_range(0..height));
 
         visited[start] = true;
         frontier.push(start);

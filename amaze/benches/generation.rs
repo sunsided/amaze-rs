@@ -1,5 +1,5 @@
 use amaze::generators::RecursiveBacktracker4;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn recursive_backtracker_bench(c: &mut Criterion) {
     let generator = RecursiveBacktracker4::new_from_seed(1337);

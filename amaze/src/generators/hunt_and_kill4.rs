@@ -43,8 +43,8 @@ impl HuntAndKill4 {
 
         let mut rng = self.rng.clone();
         let mut current = Some(GridCoord2D::new(
-            rng.gen_range(0..width),
-            rng.gen_range(0..height),
+            rng.random_range(0..width),
+            rng.random_range(0..height),
         ));
 
         while let Some(cell) = current {

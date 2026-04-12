@@ -36,7 +36,7 @@ impl Eller4 {
 
         for y in 0..height {
             for x in 0..width.saturating_sub(1) {
-                let join = y + 1 == height || rng.gen_bool(0.5);
+                let join = y + 1 == height || rng.random_bool(0.5);
                 if join && set_ids[x] != set_ids[x + 1] {
                     let a = GridCoord2D::new(x, y);
                     let b = GridCoord2D::new(x + 1, y);
@@ -63,10 +63,10 @@ impl Eller4 {
 
             let mut carry_down = vec![false; width];
             for indices in groups.values() {
-                let forced = indices[rng.gen_range(0..indices.len())];
+                let forced = indices[rng.random_range(0..indices.len())];
                 carry_down[forced] = true;
                 for &x in indices {
-                    if rng.gen_bool(0.35) {
+                    if rng.random_bool(0.35) {
                         carry_down[x] = true;
                     }
                 }
