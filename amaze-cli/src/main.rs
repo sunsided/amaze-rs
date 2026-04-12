@@ -1,11 +1,14 @@
-use amaze::generators::RecursiveBacktracker4;
+use amaze::generators::{
+    BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, MixedCell,
+    RecursiveBacktracker4, Sidewinder4, Wilson4,
+};
 use amaze::renderers::{ImageRenderer, RenderStyle, UnicodeRenderer};
 use clap::{value_parser, Arg, ArgAction, Command};
 
 fn main() {
     let matches = Command::new("amaze-cli")
         .about("A Maze Generator")
-        .version("0.1.0")
+        .version("0.2.0")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .author("Markus Mayer")
@@ -20,6 +23,18 @@ fn main() {
                         .long("algorithm")
                         .help("selects the algorithm to use")
                         .display_order(0)
+                        .default_value("recursive-backtracker")
+                        .value_parser([
+                            "recursive-backtracker",
+                            "growing-tree",
+                            "growing-tree-mixed",
+                            "kruskal",
+                            "eller",
+                            "wilson",
+                            "hunt-and-kill",
+                            "sidewinder",
+                            "binary-tree",
+                        ])
                         .action(ArgAction::Set),
                 )
                 .arg(
@@ -67,20 +82,44 @@ fn main() {
             let width = gen_matches.get_one::<usize>("width").unwrap_or(&8usize);
             let height = gen_matches.get_one::<usize>("height").unwrap_or(&8usize);
 
-            let default_algorithm = String::from("recursive-backtracker");
             let default_style = RenderStyle::default();
             let algorithm = gen_matches
                 .get_one::<String>("algorithm")
-                .unwrap_or(&default_algorithm);
+                .expect("defaulted");
             let style = gen_matches
                 .get_one::<RenderStyle>("style")
                 .unwrap_or(&default_style);
-            let generator = match algorithm.as_str() {
-                "recursive-backtracker" => RecursiveBacktracker4::new_from_seed(seed),
-                _ => unreachable!(),
-            };
-
-            let grid = generator.generate(*width, *height);
+            let grid =
+                match algorithm.as_str() {
+                    "recursive-backtracker" => {
+                        RecursiveBacktracker4::new_from_seed(seed).generate(*width, *height)
+                    }
+                    "growing-tree" => <GrowingTree4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height),
+                    "growing-tree-mixed" => GrowingTree4::new_from_seed_with_selector(
+                        seed,
+                        MixedCell {
+                            newest_probability: 0.7,
+                        },
+                    )
+                    .generate(*width, *height),
+                    "kruskal" => {
+                        <Kruskal4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height)
+                    }
+                    "eller" => {
+                        <Eller4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height)
+                    }
+                    "wilson" => {
+                        <Wilson4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height)
+                    }
+                    "hunt-and-kill" => <HuntAndKill4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height),
+                    "sidewinder" => <Sidewinder4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height),
+                    "binary-tree" => <BinaryTree4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height),
+                    _ => unreachable!(),
+                };
             match style {
                 RenderStyle::Unicode(style) => {
                     let renderer = UnicodeRenderer::new(*style, true);

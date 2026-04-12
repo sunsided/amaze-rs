@@ -1,6 +1,7 @@
 use std::ops::{Add, Sub};
 
 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Ord, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GridCoord2D {
     pub x: usize,
     pub y: usize,

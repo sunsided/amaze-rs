@@ -7,9 +7,15 @@ use std::ops::{Deref, Index, IndexMut};
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RoomIndex(NonZeroUsize);
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Room4List<Tag = ()> {
     rooms: Vec<Room4<Tag>>,
+}
+
+impl<Tag> Default for Room4List<Tag> {
+    fn default() -> Self {
+        Self { rooms: Vec::new() }
+    }
 }
 
 pub(crate) trait EnsureIndexConsistency<Tag> {
@@ -80,6 +86,14 @@ impl<Tag> Room4List<Tag> {
         let index = (*index).get() - 1;
         self.rooms.get_mut(index)
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, Room4<Tag>> {
+        self.rooms.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, Room4<Tag>> {
+        self.rooms.iter_mut()
+    }
 }
 
 impl<Tag> Index<RoomIndex> for Room4List<Tag> {
@@ -119,6 +133,11 @@ impl RoomIndex {
         }
         NonZeroUsize::new(value + 1).map(RoomIndex)
     }
+
+    #[inline]
+    pub fn as_usize(self) -> usize {
+        self.0.get() - 1
+    }
 }
 
 impl Deref for RoomIndex {
@@ -142,14 +161,14 @@ impl Display for RoomIndex {
 }
 
 pub struct Room4ListIntoIterator<Tag> {
-    list: Vec<Room4<Tag>>,
+    iter: std::vec::IntoIter<Room4<Tag>>,
 }
 
 impl<Tag> Iterator for Room4ListIntoIterator<Tag> {
     type Item = Room4<Tag>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.list.pop()
+        self.iter.next()
     }
 }
 
@@ -158,7 +177,9 @@ impl<Tag> IntoIterator for Room4List<Tag> {
     type IntoIter = Room4ListIntoIterator<Tag>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter { list: self.rooms }
+        Self::IntoIter {
+            iter: self.rooms.into_iter(),
+        }
     }
 }
 

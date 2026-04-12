@@ -1,9 +1,9 @@
 [package]
 name = "amaze-cli"
 publish = false
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 amaze = { path = "../amaze", features = ["renderers"] }
-clap = "4.5.23"
+clap = "4.6.0"

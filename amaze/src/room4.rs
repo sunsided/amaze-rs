@@ -72,15 +72,15 @@ impl<Tag> Room4<Tag> {
         self.west
     }
 
-    pub fn has_neighbor(&mut self, direction: Direction4) -> bool {
+    pub fn has_neighbor(&self, direction: Direction4) -> bool {
         self.get_neighbor(direction).is_some()
     }
 
-    pub fn has_neighbors(&mut self) -> bool {
-        self.north.is_some() | self.south.is_some() | self.east.is_some() | self.west.is_some()
+    pub fn has_neighbors(&self) -> bool {
+        self.north.is_some() || self.south.is_some() || self.east.is_some() || self.west.is_some()
     }
 
-    pub fn get_neighbor(&mut self, direction: Direction4) -> Option<RoomIndex> {
+    pub fn get_neighbor(&self, direction: Direction4) -> Option<RoomIndex> {
         match direction {
             Direction4::NORTH => self.north,
             Direction4::SOUTH => self.south,

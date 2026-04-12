@@ -8,17 +8,49 @@ homepage = "https://github.com/sunsided/amaze-rs"
 repository = "https://github.com/sunsided/amaze-rs"
 license = "EUPL-1.2 OR MIT OR Apache-2.0"
 readme = "../README.md"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
+rust-version = "1.84.1"
 
 [features]
-default = ["renderers"]
+default = ["renderers", "generators", "solvers"]
+
+generators = [
+    "generator-growing-tree",
+    "generator-kruskal",
+    "generator-eller",
+    "generator-wilson",
+    "generator-hunt-and-kill",
+    "generator-sidewinder",
+    "generator-binary-tree",
+]
+generator-growing-tree = []
+generator-kruskal = []
+generator-eller = []
+generator-wilson = []
+generator-hunt-and-kill = []
+generator-sidewinder = []
+generator-binary-tree = []
+
+solvers = ["solver-bfs", "solver-dfs", "solver-astar", "solver-dead-end"]
+solver-bfs = []
+solver-dfs = []
+solver-astar = []
+solver-dead-end = []
+
 renderers = ["unicode-renderer", "pgm-renderer"]
 unicode-renderer = []
 pgm-renderer = []
+serde = ["dep:serde"]
 
 [dependencies]
 rand = "^0.8.5"
+serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
-indoc = "2.0.5"
+indoc = "2.0.7"
+criterion = "0.5"
+
+[[bench]]
+name = "generation"
+harness = false

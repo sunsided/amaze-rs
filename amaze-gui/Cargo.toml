@@ -1,11 +1,10 @@
 [package]
 name = "amaze-gui"
 publish = false
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 amaze = { path = "../amaze" }
 eframe = "0.30.0"
 egui = "0.30.0"
-

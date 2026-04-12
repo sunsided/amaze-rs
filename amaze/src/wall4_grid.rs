@@ -1,8 +1,13 @@
+use crate::direction4::Direction4;
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
 use crate::room4::Wall4;
+use crate::room4_list::{Room4List, RoomIndex};
+use crate::stats::MazeStats;
+use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Wall4Grid {
     width: usize,
     height: usize,
@@ -70,6 +75,136 @@ impl Wall4Grid {
     pub fn height(&self) -> usize {
         self.height
     }
+
+    pub fn coords(&self) -> impl Iterator<Item = GridCoord2D> + '_ {
+        (0..self.height).flat_map(move |y| (0..self.width).map(move |x| GridCoord2D::new(x, y)))
+    }
+
+    pub fn neighbors(&self, cell: GridCoord2D) -> impl Iterator<Item = GridCoord2D> + '_ {
+        let mut out = [None, None, None, None];
+        let mut n = 0;
+        if let Some(c) = cell.up().filter(|c| c.y < self.height) {
+            out[n] = Some(c);
+            n += 1;
+        }
+        if let Some(c) = cell.right().filter(|c| c.x < self.width) {
+            out[n] = Some(c);
+            n += 1;
+        }
+        if let Some(c) = cell.down().filter(|c| c.y < self.height) {
+            out[n] = Some(c);
+            n += 1;
+        }
+        if let Some(c) = cell.left().filter(|c| c.x < self.width) {
+            out[n] = Some(c);
+        }
+        out.into_iter().flatten()
+    }
+
+    pub fn open_neighbors(&self, cell: GridCoord2D) -> Vec<GridCoord2D> {
+        let Some(walls) = self.get(cell) else {
+            return Vec::new();
+        };
+
+        let mut out = Vec::with_capacity(4);
+        if !walls.contains(Direction4::NORTH) {
+            if let Some(n) = cell.up().filter(|c| c.y < self.height) {
+                out.push(n);
+            }
+        }
+        if !walls.contains(Direction4::EAST) {
+            if let Some(e) = cell.right().filter(|c| c.x < self.width) {
+                out.push(e);
+            }
+        }
+        if !walls.contains(Direction4::SOUTH) {
+            if let Some(s) = cell.down().filter(|c| c.y < self.height) {
+                out.push(s);
+            }
+        }
+        if !walls.contains(Direction4::WEST) {
+            if let Some(w) = cell.left().filter(|c| c.x < self.width) {
+                out.push(w);
+            }
+        }
+        out
+    }
+
+    pub fn to_room_list<Tag, F>(&self, tag_fn: F) -> Room4List<Tag>
+    where
+        F: Fn(GridCoord2D) -> Tag,
+    {
+        let mut list = Room4List::default();
+        let mut index_of_cell =
+            vec![RoomIndex::from(0).expect("0 is valid"); self.width * self.height];
+
+        for cell in self.coords() {
+            let index = list.push_default(tag_fn(cell));
+            index_of_cell[self.linearize_coords(cell)] = index;
+        }
+
+        for cell in self.coords() {
+            let idx = index_of_cell[self.linearize_coords(cell)];
+            let doors = !self[cell];
+            let room = list.get_mut(idx).expect("new room index must exist");
+            if doors.contains(Direction4::NORTH) {
+                if let Some(n) = cell.up().filter(|c| c.y < self.height) {
+                    room.set_north(index_of_cell[self.linearize_coords(n)]);
+                }
+            }
+            if doors.contains(Direction4::EAST) {
+                if let Some(e) = cell.right().filter(|c| c.x < self.width) {
+                    room.set_east(index_of_cell[self.linearize_coords(e)]);
+                }
+            }
+            if doors.contains(Direction4::SOUTH) {
+                if let Some(s) = cell.down().filter(|c| c.y < self.height) {
+                    room.set_south(index_of_cell[self.linearize_coords(s)]);
+                }
+            }
+            if doors.contains(Direction4::WEST) {
+                if let Some(w) = cell.left().filter(|c| c.x < self.width) {
+                    room.set_west(index_of_cell[self.linearize_coords(w)]);
+                }
+            }
+        }
+
+        list
+    }
+
+    pub fn stats(&self) -> MazeStats {
+        MazeStats::from_grid(self)
+    }
+
+    pub(crate) fn bfs_distances(&self, start: GridCoord2D) -> Vec<Option<usize>> {
+        let mut dist = vec![None; self.width * self.height];
+        if self.get(start).is_none() {
+            return dist;
+        }
+
+        let mut q = VecDeque::new();
+        dist[self.linearize_coords(start)] = Some(0);
+        q.push_back(start);
+
+        while let Some(cell) = q.pop_front() {
+            let base = dist[self.linearize_coords(cell)].unwrap_or(0);
+            for n in self.open_neighbors(cell) {
+                let idx = self.linearize_coords(n);
+                if dist[idx].is_none() {
+                    dist[idx] = Some(base + 1);
+                    q.push_back(n);
+                }
+            }
+        }
+
+        dist
+    }
+}
+
+impl From<&Wall4Grid> for Room4List<()> {
+    fn from(value: &Wall4Grid) -> Self {
+        value.to_room_list(|_| ())
+    }
 }
 
 impl GetCoordinateBounds2D for Wall4Grid {
@@ -97,5 +232,24 @@ impl IndexMut<GridCoord2D> for Wall4Grid {
     fn index_mut(&mut self, index: GridCoord2D) -> &mut Self::Output {
         let index = self.linearize_coords(index);
         &mut self.walls[index]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::generators::RecursiveBacktracker4;
+
+    #[test]
+    fn converts_to_room_list() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let rooms = maze.to_room_list(|coord| coord);
+        assert_eq!(rooms.len(), 64);
+    }
+
+    #[test]
+    fn stats_has_non_zero_longest_path() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let stats = maze.stats();
+        assert!(stats.longest_path > 0);
     }
 }

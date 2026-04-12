@@ -2,6 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::ops::{Add, AddAssign, Deref, Not, Sub, SubAssign};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Direction4(u8);
 
 /// A 4-connected (Von Neumann) neighborhood direction.
@@ -33,7 +34,7 @@ impl Direction4 {
     /// ```
     #[inline]
     pub fn contains(&self, other: Direction4) -> bool {
-        &self.0 & other.0 == other.0
+        self.0 & other.0 == other.0
     }
 
     /// Tests whether this direction encodes "all" directions.
@@ -73,14 +74,32 @@ impl Direction4 {
     /// assert!(!Direction4::NONE.is_trivial());
     /// ```
     pub fn is_trivial(&self) -> bool {
-        match *self {
-            Self::NORTH => true,
-            Self::SOUTH => true,
-            Self::EAST => true,
-            Self::WEST => true,
-            _ => false,
+        matches!(*self, Self::NORTH | Self::SOUTH | Self::EAST | Self::WEST)
+    }
+
+    #[inline]
+    pub fn opposite(self) -> Self {
+        match self {
+            Self::NORTH => Self::SOUTH,
+            Self::SOUTH => Self::NORTH,
+            Self::EAST => Self::WEST,
+            Self::WEST => Self::EAST,
+            _ => Self::NONE,
         }
     }
+
+    #[inline]
+    pub fn from_delta(dx: isize, dy: isize) -> Option<Self> {
+        match (dx, dy) {
+            (0, -1) => Some(Self::NORTH),
+            (0, 1) => Some(Self::SOUTH),
+            (1, 0) => Some(Self::EAST),
+            (-1, 0) => Some(Self::WEST),
+            _ => None,
+        }
+    }
+
+    pub const CARDINALS: [Self; 4] = [Self::NORTH, Self::EAST, Self::SOUTH, Self::WEST];
 
     /// Adds a new direction to this value.
     ///
@@ -156,6 +175,7 @@ impl Add for Direction4 {
     /// assert_eq!(direction, Direction4::ALL);
     /// ```
     #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 | rhs.0)
     }
@@ -174,8 +194,9 @@ impl AddAssign for Direction4 {
     /// assert_eq!(direction, Direction4::ALL);
     /// ```
     #[inline]
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, rhs: Self) {
-        self.0 = &self.0 | rhs.0;
+        self.0 |= rhs.0;
     }
 }
 
@@ -210,7 +231,7 @@ impl SubAssign for Direction4 {
     /// ```
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
-        self.0 = (&self.0 & !rhs.0) & Direction4::MASK;
+        self.0 = (self.0 & !rhs.0) & Direction4::MASK;
     }
 }
 
@@ -258,7 +279,7 @@ impl Iterator for Direction4Iterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.step < 4 {
-            let current = Direction4(1 << &self.step);
+            let current = Direction4(1 << self.step);
             self.step += 1;
             if self.direction.contains(current) {
                 return Some(current);
