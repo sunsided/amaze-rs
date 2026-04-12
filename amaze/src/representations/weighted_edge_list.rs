@@ -59,11 +59,42 @@ impl From<&Wall4Grid> for WeightedEdgeList {
 mod tests {
     use super::*;
     use crate::generators::RecursiveBacktracker4;
+    use crate::representations::EdgeList;
 
     #[test]
     fn default_weights_are_one() {
         let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
         let list = WeightedEdgeList::from(&maze);
         assert!(list.edges.iter().all(|edge| edge.weight == 1.0));
+    }
+
+    #[test]
+    fn custom_weight_fn_applied() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let list = WeightedEdgeList::from_wall_grid_with(&maze, |from, to| {
+            (from.x + from.y + to.x + to.y) as f32 + 0.5
+        });
+
+        assert!(list.edges.iter().all(|edge| {
+            edge.weight == (edge.from.x + edge.from.y + edge.to.x + edge.to.y) as f32 + 0.5
+        }));
+    }
+
+    #[test]
+    fn edge_count_matches_unweighted() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let weighted = WeightedEdgeList::from(&maze);
+        let unweighted = EdgeList::from(&maze);
+
+        assert_eq!(weighted.edges.len(), unweighted.edges.len());
+    }
+
+    #[test]
+    fn iter_edges_yields_all() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let list = WeightedEdgeList::from(&maze);
+
+        let from_iter: Vec<_> = list.iter_edges().copied().collect();
+        assert_eq!(from_iter, list.edges);
     }
 }

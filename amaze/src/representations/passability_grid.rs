@@ -197,4 +197,88 @@ mod tests {
         assert!(!passability.set_entrance(0, 0));
         assert!(!passability.set_exit(16, 16));
     }
+
+    #[test]
+    fn boundary_cells_are_walls() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let passability = PassabilityGrid::from(&maze);
+
+        for x in 0..passability.width {
+            assert!(!passability.is_passable(x, 0));
+            assert!(!passability.is_passable(x, passability.height - 1));
+        }
+        for y in 0..passability.height {
+            assert!(!passability.is_passable(0, y));
+            assert!(!passability.is_passable(passability.width - 1, y));
+        }
+    }
+
+    #[test]
+    fn closed_walls_map_to_impassable() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let passability = PassabilityGrid::from(&maze);
+
+        for cell in maze.coords() {
+            let (x, y) = PassabilityGrid::maze_to_passability(cell);
+            let walls = maze[cell];
+
+            if walls.contains(Direction4::NORTH) {
+                assert!(!passability.is_passable(x, y - 1));
+            }
+            if walls.contains(Direction4::EAST) {
+                assert!(!passability.is_passable(x + 1, y));
+            }
+            if walls.contains(Direction4::SOUTH) {
+                assert!(!passability.is_passable(x, y + 1));
+            }
+            if walls.contains(Direction4::WEST) {
+                assert!(!passability.is_passable(x - 1, y));
+            }
+        }
+    }
+
+    #[test]
+    fn get_returns_none_out_of_bounds() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let passability = PassabilityGrid::from(&maze);
+
+        assert!(passability.get(passability.width, 0).is_none());
+        assert!(passability.get(0, passability.height).is_none());
+    }
+
+    #[test]
+    fn index_trait_matches_get() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let passability = PassabilityGrid::from(&maze);
+
+        for y in 0..passability.height {
+            for x in 0..passability.width {
+                assert_eq!(passability[(x, y)], passability.get(x, y).unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn coordinate_round_trip() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+
+        for cell in maze.coords() {
+            let (x, y) = PassabilityGrid::maze_to_passability(cell);
+            assert_eq!(PassabilityGrid::passability_to_maze(x, y), Some(cell));
+        }
+    }
+
+    #[test]
+    fn passability_to_maze_returns_none_for_walls() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let passability = PassabilityGrid::from(&maze);
+
+        for y in 0..passability.height {
+            for x in 0..passability.width {
+                if x % 2 == 0 || y % 2 == 0 {
+                    assert_eq!(PassabilityGrid::passability_to_maze(x, y), None);
+                }
+            }
+        }
+    }
 }

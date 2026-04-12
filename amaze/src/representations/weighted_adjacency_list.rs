@@ -76,6 +76,7 @@ impl From<&Wall4Grid> for WeightedAdjacencyList {
 mod tests {
     use super::*;
     use crate::generators::RecursiveBacktracker4;
+    use crate::representations::AdjacencyList;
 
     #[test]
     fn default_weights_are_one() {
@@ -87,5 +88,58 @@ mod tests {
                 .iter()
                 .all(|neighbors| neighbors.iter().all(|(_, weight)| *weight == 1.0))
         );
+    }
+
+    #[test]
+    fn custom_weight_fn_applied() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let list = WeightedAdjacencyList::from_wall_grid_with(&maze, |from, to| {
+            (from.x + from.y + to.x + to.y) as f32 + 0.5
+        });
+
+        for from in maze.coords() {
+            for (to, weight) in list.neighbors(from) {
+                assert_eq!(*weight, (from.x + from.y + to.x + to.y) as f32 + 0.5);
+            }
+        }
+    }
+
+    #[test]
+    fn get_neighbors_returns_none_out_of_bounds() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let list = WeightedAdjacencyList::from(&maze);
+
+        assert!(
+            list.get_neighbors(GridCoord2D::new(list.width, 0))
+                .is_none()
+        );
+        assert!(
+            list.get_neighbors(GridCoord2D::new(0, list.height))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn index_trait_matches_neighbors_method() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let list = WeightedAdjacencyList::from(&maze);
+
+        for coord in maze.coords() {
+            assert_eq!(&list[coord], list.neighbors(coord));
+        }
+    }
+
+    #[test]
+    fn neighbor_count_matches_unweighted() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let weighted = WeightedAdjacencyList::from(&maze);
+        let unweighted = AdjacencyList::from(&maze);
+
+        for coord in maze.coords() {
+            assert_eq!(
+                weighted.neighbors(coord).len(),
+                unweighted.neighbors(coord).len()
+            );
+        }
     }
 }

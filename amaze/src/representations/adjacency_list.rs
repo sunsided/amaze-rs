@@ -73,4 +73,53 @@ mod tests {
             assert_eq!(adjacency.neighbors(coord), maze.open_neighbors(coord));
         }
     }
+
+    #[test]
+    fn get_neighbors_returns_none_out_of_bounds() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let adjacency = AdjacencyList::from(&maze);
+
+        assert!(
+            adjacency
+                .get_neighbors(GridCoord2D::new(adjacency.width, 0))
+                .is_none()
+        );
+        assert!(
+            adjacency
+                .get_neighbors(GridCoord2D::new(0, adjacency.height))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn index_trait_matches_neighbors_method() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let adjacency = AdjacencyList::from(&maze);
+
+        for coord in maze.coords() {
+            assert_eq!(&adjacency[coord], adjacency.neighbors(coord));
+        }
+    }
+
+    #[test]
+    fn neighbor_symmetry() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
+        let adjacency = AdjacencyList::from(&maze);
+
+        for coord in maze.coords() {
+            for neighbor in adjacency.neighbors(coord) {
+                assert!(adjacency.neighbors(*neighbor).contains(&coord));
+            }
+        }
+    }
+
+    #[test]
+    fn empty_grid_produces_empty_adjacency() {
+        let maze = RecursiveBacktracker4::new_from_seed(7).generate(0, 0);
+        let adjacency = AdjacencyList::from(&maze);
+
+        assert_eq!(adjacency.width, 0);
+        assert_eq!(adjacency.height, 0);
+        assert!(adjacency.neighbors.is_empty());
+    }
 }
