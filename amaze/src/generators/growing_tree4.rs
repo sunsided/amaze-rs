@@ -7,10 +7,10 @@ use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 pub struct GrowingTree4<S: CellSelector = NewestCell> {
-    rng: StdRng,
+    rng_seed: u64,
     selector: S,
 }
 
@@ -20,19 +20,19 @@ where
 {
     pub fn with_selector(selector: S) -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
             selector,
         }
     }
 
     pub fn new_from_seed_with_selector(rng_seed: u64, selector: S) -> Self {
-        let rng = if rng_seed == 0 {
-            StdRng::from_os_rng()
+        let rng_seed = if rng_seed == 0 {
+            rand::random()
         } else {
-            StdRng::seed_from_u64(rng_seed)
+            rng_seed
         };
 
-        Self { rng, selector }
+        Self { rng_seed, selector }
     }
 
     fn generate_with_steps(&self, width: usize, height: usize) -> (Wall4Grid, Vec<GenerationStep>) {
@@ -46,7 +46,7 @@ where
             return (grid, visitor.into_steps());
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         let start = GridCoord2D::new(rng.random_range(0..width), rng.random_range(0..height));
 
         visited[start] = true;
@@ -89,7 +89,7 @@ where
 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
             selector: S::default(),
         }
     }
@@ -99,7 +99,7 @@ where
             Self::new_random()
         } else {
             Self {
-                rng: StdRng::seed_from_u64(rng_seed),
+                rng_seed,
                 selector: S::default(),
             }
         }

@@ -6,6 +6,6 @@ edition = "2024"
 rust-version = "1.92.0"
 
 [dependencies]
-amaze = { path = "../amaze" }
-eframe = "0.34.1"
-egui = "0.34.1"
+amaze.workspace = true
+eframe.workspace = true
+egui.workspace = true

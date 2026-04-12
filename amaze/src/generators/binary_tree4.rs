@@ -4,10 +4,10 @@ use crate::generators::{
 use crate::grid_coord_2d::GridCoord2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 pub struct BinaryTree4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for BinaryTree4 {
@@ -25,7 +25,7 @@ impl BinaryTree4 {
             return (grid, visitor.into_steps());
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         for y in 0..height {
             for x in 0..width {
                 let cell = GridCoord2D::new(x, y);
@@ -64,7 +64,7 @@ impl BinaryTree4 {
 impl MazeGenerator2D for BinaryTree4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -72,9 +72,7 @@ impl MazeGenerator2D for BinaryTree4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 

@@ -6,5 +6,5 @@ edition = "2024"
 rust-version = "1.85.0"
 
 [dependencies]
-amaze = { path = "../amaze", features = ["renderers"] }
-clap = "4.6.0"
+amaze = { workspace = true, features = ["renderers"] }
+clap.workspace = true

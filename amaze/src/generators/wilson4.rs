@@ -5,11 +5,11 @@ use crate::grid_coord_2d::GridCoord2D;
 use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use std::collections::{HashMap, HashSet};
 
 pub struct Wilson4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for Wilson4 {
@@ -32,7 +32,7 @@ impl Wilson4 {
             return (grid, visitor.into_steps());
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         let all_cells: Vec<_> = grid.coords().collect();
         let mut in_maze = VisitMap2D::new_like(&grid);
 
@@ -91,7 +91,7 @@ impl Wilson4 {
 impl MazeGenerator2D for Wilson4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -99,9 +99,7 @@ impl MazeGenerator2D for Wilson4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 
