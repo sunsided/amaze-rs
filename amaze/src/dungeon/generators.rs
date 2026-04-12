@@ -128,6 +128,16 @@ pub struct DungeonWalkGenerator {
     long_walk_max: usize,
 }
 
+/// Helper struct to reduce parameter count in internal methods
+struct WalkContext<'a, V> {
+    rng: &'a mut StdRng,
+    grid: &'a mut DungeonGrid,
+    visitor: &'a mut V,
+    width: usize,
+    height: usize,
+    last_floor: GridCoord2D,
+}
+
 impl DungeonWalkGenerator {
     /// Create a new generator of the specified type with a random seed.
     pub fn new_random(dungeon_type: DungeonType) -> Self {
@@ -246,35 +256,34 @@ impl DungeonWalkGenerator {
                     }
                 }
                 DungeonType::Rooms | DungeonType::Winding => {
-                    // Take a long walk
-                    walker_pos = self.take_long_walk(
-                        &mut rng,
-                        &mut grid,
-                        &mut visitor,
-                        walker_pos,
+                    // Create context for helper methods
+                    let mut ctx = WalkContext {
+                        rng: &mut rng,
+                        grid: &mut grid,
+                        visitor: &mut visitor,
                         width,
                         height,
-                        &mut last_floor_pos,
-                    );
+                        last_floor: last_floor_pos,
+                    };
+
+                    // Take a long walk
+                    walker_pos = self.take_long_walk(&mut ctx, walker_pos);
 
                     // Maybe stamp a room
                     let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
                         true
                     } else {
                         // Winding: probabilistic room suppression
-                        let roll = rng.random_range(0..100);
+                        let roll = ctx.rng.random_range(0..100);
                         roll > self.winding_hall_probability
                     };
 
-                    if should_stamp_room && grid.floor_count() < target_floor_count {
-                        self.stamp_room(
-                            &mut rng,
-                            &mut grid,
-                            &mut visitor,
-                            walker_pos,
-                            &mut last_floor_pos,
-                        );
+                    if should_stamp_room && ctx.grid.floor_count() < target_floor_count {
+                        self.stamp_room(&mut ctx, walker_pos);
                     }
+
+                    // Extract last_floor from context
+                    last_floor_pos = ctx.last_floor;
                 }
             }
 
@@ -335,15 +344,10 @@ impl DungeonWalkGenerator {
     /// Unity picks one direction and walks straight in that direction.
     fn take_long_walk<V: DungeonGenerationVisitor>(
         &self,
-        rng: &mut StdRng,
-        grid: &mut DungeonGrid,
-        visitor: &mut V,
+        ctx: &mut WalkContext<V>,
         start: GridCoord2D,
-        width: usize,
-        height: usize,
-        last_floor: &mut GridCoord2D,
     ) -> GridCoord2D {
-        let walk_length = rng.random_range(self.long_walk_min..self.long_walk_max);
+        let walk_length = ctx.rng.random_range(self.long_walk_min..self.long_walk_max);
 
         // Pick ONE direction for this entire long walk (Unity behavior)
         let directions: [(isize, isize); 4] = [
@@ -352,20 +356,21 @@ impl DungeonWalkGenerator {
             (0, 1),  // down
             (-1, 0), // left
         ];
-        let &(dx, dy) = directions.choose(rng).unwrap();
+        let &(dx, dy) = directions.choose(ctx.rng).unwrap();
 
         let mut pos = start;
 
         // Walk straight in that direction for walk_length steps
         for _ in 0..walk_length {
-            let new_x = (pos.x as isize + dx).max(0).min(width as isize - 1) as usize;
-            let new_y = (pos.y as isize + dy).max(0).min(height as isize - 1) as usize;
+            let new_x = (pos.x as isize + dx).max(0).min(ctx.width as isize - 1) as usize;
+            let new_y = (pos.y as isize + dy).max(0).min(ctx.height as isize - 1) as usize;
             pos = GridCoord2D::new(new_x, new_y);
 
-            if !grid.is_floor(pos) {
-                grid.set(pos, TileType::Floor);
-                visitor.on_step(&DungeonGenerationStep::PlaceFloor { coord: pos });
-                *last_floor = pos;
+            if !ctx.grid.is_floor(pos) {
+                ctx.grid.set(pos, TileType::Floor);
+                ctx.visitor
+                    .on_step(&DungeonGenerationStep::PlaceFloor { coord: pos });
+                ctx.last_floor = pos;
             }
         }
 
@@ -376,33 +381,31 @@ impl DungeonWalkGenerator {
     /// Unity: half-sizes are Random.Range(1, 5) => 1..=4, so room size is (2*hw+1) x (2*hh+1).
     fn stamp_room<V: DungeonGenerationVisitor>(
         &self,
-        rng: &mut StdRng,
-        grid: &mut DungeonGrid,
-        visitor: &mut V,
+        ctx: &mut WalkContext<V>,
         center: GridCoord2D,
-        last_floor: &mut GridCoord2D,
     ) {
-        let half_width = rng.random_range(1..5); // Unity: Random.Range(1,5) = 1..=4
-        let half_height = rng.random_range(1..5);
+        let half_width = ctx.rng.random_range(1..5); // Unity: Random.Range(1,5) = 1..=4
+        let half_height = ctx.rng.random_range(1..5);
 
-        visitor.on_step(&DungeonGenerationStep::StampRoom {
+        ctx.visitor.on_step(&DungeonGenerationStep::StampRoom {
             center,
             half_width,
             half_height,
         });
 
         let min_x = center.x.saturating_sub(half_width);
-        let max_x = (center.x + half_width).min(grid.width() - 1);
+        let max_x = (center.x + half_width).min(ctx.grid.width() - 1);
         let min_y = center.y.saturating_sub(half_height);
-        let max_y = (center.y + half_height).min(grid.height() - 1);
+        let max_y = (center.y + half_height).min(ctx.grid.height() - 1);
 
         for y in min_y..=max_y {
             for x in min_x..=max_x {
                 let coord = GridCoord2D::new(x, y);
-                if !grid.is_floor(coord) {
-                    grid.set(coord, TileType::Floor);
-                    visitor.on_step(&DungeonGenerationStep::PlaceFloor { coord });
-                    *last_floor = coord;
+                if !ctx.grid.is_floor(coord) {
+                    ctx.grid.set(coord, TileType::Floor);
+                    ctx.visitor
+                        .on_step(&DungeonGenerationStep::PlaceFloor { coord });
+                    ctx.last_floor = coord;
                 }
             }
         }

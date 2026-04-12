@@ -1,19 +1,14 @@
 /// Tile type for dungeon cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TileType {
     /// Empty/uninitialized tile
+    #[default]
     Empty,
     /// Floor tile (passable)
     Floor,
     /// Wall tile (impassable)
     Wall,
-}
-
-impl Default for TileType {
-    fn default() -> Self {
-        TileType::Empty
-    }
 }
 
 impl TileType {

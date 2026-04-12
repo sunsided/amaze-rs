@@ -74,16 +74,10 @@ impl Default for MyApp {
         let initial_height = 24;
         let algorithm = AlgorithmChoice::RecursiveBacktracker;
         let maze = generate_maze(algorithm, initial_seed, initial_width, initial_height);
-        let dungeon = generate_dungeon(
-            DungeonType::Rooms,
-            initial_seed,
-            initial_width,
-            initial_height,
-            120,
-            50,
-            9,
-            18,
-        );
+        let dungeon = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, initial_seed)
+            .with_winding_probability(50)
+            .with_long_walk_range(9, 18)
+            .generate(initial_width, initial_height, 120);
 
         Self {
             mode: Mode::Maze,
@@ -458,22 +452,6 @@ fn generate_steps(
     }
 }
 
-fn generate_dungeon(
-    dungeon_type: DungeonType,
-    seed: u64,
-    width: usize,
-    height: usize,
-    floor_count: usize,
-    winding_probability: u8,
-    long_walk_min: usize,
-    long_walk_max: usize,
-) -> DungeonGrid {
-    DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
-        .with_winding_probability(winding_probability)
-        .with_long_walk_range(long_walk_min, long_walk_max)
-        .generate(width, height, floor_count)
-}
-
 fn regenerate_maze(app: &mut MyApp) {
     app.is_animating = false;
     app.animation_steps.clear();
@@ -490,16 +468,10 @@ fn regenerate_dungeon(app: &mut MyApp) {
     app.end_cell = None;
     app.auto_fit_pending = true;
     let mut lock = app.dungeon.lock().unwrap();
-    *lock = generate_dungeon(
-        app.dungeon_type,
-        app.seed,
-        app.width,
-        app.height,
-        app.floor_count,
-        app.winding_probability,
-        app.long_walk_min,
-        app.long_walk_max,
-    );
+    *lock = DungeonWalkGenerator::new_from_seed(app.dungeon_type, app.seed)
+        .with_winding_probability(app.winding_probability)
+        .with_long_walk_range(app.long_walk_min, app.long_walk_max)
+        .generate(app.width, app.height, app.floor_count);
 }
 
 fn render_maze(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
