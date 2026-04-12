@@ -93,7 +93,6 @@ pub enum UnicodeRenderStyle {
     /// ## Example
     /// ```rust
     /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-    /// fn main() {
     ///
     /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
     /// let grid = generator.generate(6, 6);
@@ -101,7 +100,6 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Thin, true);
     /// let expected = "╷┌───┐\n│├──┐╵\n│└─┐└┐\n└─┐╵┌┤\n┌╴│┌┘│\n└─┴┘╶┘\n";
     /// assert_eq!(renderer.render(&grid), expected);
-    /// }
     /// ```
     Thin,
     /// Renders the grid as double unicode lines.
@@ -109,7 +107,6 @@ pub enum UnicodeRenderStyle {
     /// ## Example
     /// ```rust
     /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-    /// fn main() {
     ///
     /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
     /// let grid = generator.generate(6, 6);
@@ -117,7 +114,6 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Double, true);
     /// let expected = "╥╔═══╗\n║╠══╗╨\n║╚═╗╚╗\n╚═╗╨╔╣\n╔╡║╔╝║\n╚═╩╝╞╝\n";
     /// assert_eq!(renderer.render(&grid), expected);
-    /// }
     /// ```
     Double,
     /// Renders the grid as bold unicode lines.
@@ -125,7 +121,6 @@ pub enum UnicodeRenderStyle {
     /// ## Example
     /// ```rust
     /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-    /// fn main() {
     ///
     /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
     /// let grid = generator.generate(6, 6);
@@ -133,7 +128,6 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
     /// let expected = "╻┏━━━┓\n┃┣━━┓╹\n┃┗━┓┗┓\n┗━┓╹┏┫\n┏╸┃┏┛┃\n┗━┻┛╺┛\n";
     /// assert_eq!(renderer.render(&grid), expected);
-    /// }
     /// ```
     Heavy,
     /// Renders the grid as hexadecimal values encoding the directions.
@@ -141,7 +135,6 @@ pub enum UnicodeRenderStyle {
     /// ## Example
     /// ```rust
     /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-    /// fn main() {
     ///
     /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
     /// let grid = generator.generate(6, 6);
@@ -150,7 +143,6 @@ pub enum UnicodeRenderStyle {
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Hexadecimal, true);
     /// let expected = "26CCCA\n37CCA1\n35CA5A\n5CA16B\n683693\n5CD949\n";
     /// assert_eq!(renderer.render(&grid), expected);
-    /// }
     /// ```
     Hexadecimal,
 }
@@ -167,7 +159,6 @@ impl UnicodeRenderer {
     /// ## Example
     /// ```rust
     /// use amaze::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-    /// fn main() {
     ///
     /// let generator = amaze::generators::RecursiveBacktracker4::new_from_seed(0xdeadbeef);
     /// let grid = generator.generate(6, 6);
@@ -179,7 +170,6 @@ impl UnicodeRenderer {
     /// // Without line breaks:
     /// let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, false);
     /// assert_eq!(renderer.render(&grid), "╻┏━━━┓┃┣━━┓╹┃┗━┓┗┓┗━┓╹┏┫┏╸┃┏┛┃┗━┻┛╺┛");
-    /// }
     /// ```
     pub fn new(style: UnicodeRenderStyle, line_breaks: bool) -> Self {
         Self {

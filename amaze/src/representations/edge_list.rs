@@ -148,7 +148,7 @@ impl petgraph::visit::EdgeCount for EdgeList {
 }
 
 #[cfg(feature = "petgraph")]
-impl<'a> petgraph::visit::IntoNodeIdentifiers for &'a EdgeList {
+impl petgraph::visit::IntoNodeIdentifiers for &EdgeList {
     type NodeIdentifiers = NodeIdentifiers;
 
     fn node_identifiers(self) -> Self::NodeIdentifiers {
@@ -161,7 +161,7 @@ impl<'a> petgraph::visit::IntoNodeIdentifiers for &'a EdgeList {
 }
 
 #[cfg(feature = "petgraph")]
-impl<'a> petgraph::visit::IntoNeighbors for &'a EdgeList {
+impl petgraph::visit::IntoNeighbors for &EdgeList {
     type Neighbors = std::vec::IntoIter<GridCoord2D>;
 
     fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
@@ -194,7 +194,7 @@ impl<'a> petgraph::visit::IntoEdgeReferences for &'a EdgeList {
 }
 
 #[cfg(feature = "petgraph")]
-impl<'a> petgraph::visit::IntoEdges for &'a EdgeList {
+impl petgraph::visit::IntoEdges for &EdgeList {
     type Edges = std::vec::IntoIter<PetgraphEdgeRef>;
 
     fn edges(self, a: Self::NodeId) -> Self::Edges {
