@@ -6,10 +6,10 @@ use crate::visit_map_2d::VisitMap2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 pub struct HuntAndKill4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for HuntAndKill4 {
@@ -41,7 +41,7 @@ impl HuntAndKill4 {
             return (grid, visitor.into_steps());
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         let mut current = Some(GridCoord2D::new(
             rng.random_range(0..width),
             rng.random_range(0..height),
@@ -97,7 +97,7 @@ impl HuntAndKill4 {
 impl MazeGenerator2D for HuntAndKill4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -105,9 +105,7 @@ impl MazeGenerator2D for HuntAndKill4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 

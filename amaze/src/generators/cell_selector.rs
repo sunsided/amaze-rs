@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 pub trait CellSelector {
     fn select<R: Rng>(&self, rng: &mut R, frontier_len: usize) -> usize;

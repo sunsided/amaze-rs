@@ -10,7 +10,7 @@ use rand::rngs::StdRng;
 
 /// A maze generator that implements the Recursive Backtracking algorithm.
 pub struct RecursiveBacktracker4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for RecursiveBacktracker4 {
@@ -22,7 +22,7 @@ impl Default for RecursiveBacktracker4 {
 impl RecursiveBacktracker4 {
     pub fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -30,9 +30,7 @@ impl RecursiveBacktracker4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 
@@ -56,7 +54,7 @@ impl RecursiveBacktracker4 {
             return (cells, visitor.into_steps());
         }
 
-        let rng = self.rng.clone();
+        let rng = StdRng::seed_from_u64(self.rng_seed);
         Self::backtrack(
             rng,
             &mut cells,

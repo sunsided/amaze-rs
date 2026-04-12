@@ -2,7 +2,7 @@ use crate::dungeon::{DungeonGrid, DungeonType, TileType};
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 /// Generation step for dungeon creation (for animation support).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,7 +125,7 @@ pub trait DungeonGenerator {
 /// - Rooms: Long corridors with stamped rectangular rooms
 /// - Winding: Like Rooms, but with probabilistic room suppression
 pub struct DungeonWalkGenerator {
-    rng: StdRng,
+    rng_seed: u64,
     dungeon_type: DungeonType,
     /// Winding hall probability (0-99). Only used for Winding type.
     /// Probability of creating a room is (99 - winding_hall_probability) / 100.
@@ -152,7 +152,7 @@ impl DungeonWalkGenerator {
     /// Create a new generator of the specified type with a random seed.
     pub fn new_random(dungeon_type: DungeonType) -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
             dungeon_type,
             winding_hall_probability: 50, // Default Unity value
             long_walk_min: 9,             // Default Unity value
@@ -162,14 +162,10 @@ impl DungeonWalkGenerator {
 
     /// Create a new generator with a specific seed.
     pub fn new_from_seed(dungeon_type: DungeonType, seed: u64) -> Self {
-        let rng = if seed == 0 {
-            StdRng::from_os_rng()
-        } else {
-            StdRng::seed_from_u64(seed)
-        };
+        let rng_seed = if seed == 0 { rand::random() } else { seed };
 
         Self {
-            rng,
+            rng_seed,
             dungeon_type,
             winding_hall_probability: 50,
             long_walk_min: 9,
@@ -225,7 +221,7 @@ impl DungeonWalkGenerator {
         emit_wall_steps: bool,
     ) -> DungeonGrid {
         let mut grid = DungeonGrid::new(width, height);
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
 
         if width == 0 || height == 0 || floor_count == 0 {
             visitor.on_step(&DungeonGenerationStep::Complete);

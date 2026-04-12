@@ -9,7 +9,7 @@ use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
 
 pub struct Kruskal4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for Kruskal4 {
@@ -44,7 +44,7 @@ impl Kruskal4 {
             }
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         edges.shuffle(&mut rng);
 
         let mut uf = UnionFind::new(width * height);
@@ -65,7 +65,7 @@ impl Kruskal4 {
 impl MazeGenerator2D for Kruskal4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -73,9 +73,7 @@ impl MazeGenerator2D for Kruskal4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 

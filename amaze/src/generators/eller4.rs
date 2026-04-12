@@ -4,11 +4,11 @@ use crate::generators::{
 use crate::grid_coord_2d::GridCoord2D;
 use crate::wall4_grid::Wall4Grid;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use std::collections::HashMap;
 
 pub struct Eller4 {
-    rng: StdRng,
+    rng_seed: u64,
 }
 
 impl Default for Eller4 {
@@ -30,7 +30,7 @@ impl Eller4 {
             visitor.on_step(&GenerationStep::Visit { cell });
         }
 
-        let mut rng = self.rng.clone();
+        let mut rng = StdRng::seed_from_u64(self.rng_seed);
         let mut set_ids: Vec<usize> = (0..width).collect();
         let mut next_set_id = width;
 
@@ -97,7 +97,7 @@ impl Eller4 {
 impl MazeGenerator2D for Eller4 {
     fn new_random() -> Self {
         Self {
-            rng: StdRng::from_os_rng(),
+            rng_seed: rand::random(),
         }
     }
 
@@ -105,9 +105,7 @@ impl MazeGenerator2D for Eller4 {
         if rng_seed == 0 {
             Self::new_random()
         } else {
-            Self {
-                rng: StdRng::seed_from_u64(rng_seed),
-            }
+            Self { rng_seed }
         }
     }
 
