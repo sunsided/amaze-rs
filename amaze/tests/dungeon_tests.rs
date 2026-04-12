@@ -1,6 +1,8 @@
 //! Integration tests for dungeon generation and solving.
 
-use amaze::dungeon::{DungeonType, DungeonWalkGenerator, solve_astar, solve_bfs};
+#![cfg(all(feature = "representations", feature = "solvers"))]
+
+use amaze::dungeon::{solve_astar, solve_bfs, DungeonType, DungeonWalkGenerator};
 use amaze::preamble::*;
 use std::collections::{HashSet, VecDeque};
 
