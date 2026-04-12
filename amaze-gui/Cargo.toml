@@ -3,7 +3,7 @@ name = "amaze-gui"
 publish = false
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.92.0"
 
 [dependencies]
 amaze = { path = "../amaze" }
