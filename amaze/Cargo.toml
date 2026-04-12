@@ -46,13 +46,13 @@ petgraph = ["dep:petgraph", "representations"]
 serde = ["dep:serde"]
 
 [dependencies]
-rand = "^0.9.3"
+rand = "^0.10.1"
 serde = { version = "1", features = ["derive"], optional = true }
 petgraph = { version = "0.8", optional = true }
 
 [dev-dependencies]
 indoc = "2.0.7"
-criterion = "0.7"
+criterion = "0.8"
 
 [[bench]]
 name = "generation"
