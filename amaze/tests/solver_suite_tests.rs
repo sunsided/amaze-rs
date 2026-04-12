@@ -4,7 +4,7 @@
 
 #![cfg(all(feature = "representations", feature = "solvers"))]
 
-use amaze::generators::{MazeGenerator2D, RecursiveBacktracker4};
+use amaze::generators::RecursiveBacktracker4;
 use amaze::preamble::GridCoord2D;
 use amaze::solvers::{AStarSolver, BfsSolver, DeadEndFillingSolver, DfsSolver, MazeSolver};
 

@@ -16,7 +16,7 @@ use amaze::solvers::{BfsSolver, MazeSolver};
 
 /// Helper function to verify a maze is a connected spanning tree
 fn assert_connected_tree(grid: &Wall4Grid) {
-    let total_cells = (grid.width() * grid.height()) as usize;
+    let total_cells = grid.width() * grid.height();
 
     // Count the number of edges (passages) in the maze
     let mut edge_count = 0;
