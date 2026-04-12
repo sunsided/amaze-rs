@@ -50,6 +50,7 @@ struct MyApp {
     animation_steps: Vec<GenerationStep>,
     animation_index: usize,
     is_animating: bool,
+    auto_fit_pending: bool,
 }
 
 impl Default for MyApp {
@@ -77,6 +78,7 @@ impl Default for MyApp {
             animation_steps: Vec::new(),
             animation_index: 0,
             is_animating: false,
+            auto_fit_pending: true,
         }
     }
 }
@@ -197,7 +199,7 @@ impl App for MyApp {
             }
 
             if ui.button("Reset View").clicked() {
-                self.zoom = 1.0;
+                self.auto_fit_pending = true;
                 self.pan = egui::Vec2::new(0.0, 0.0);
                 self.start_cell = None;
                 self.end_cell = None;
@@ -225,9 +227,14 @@ impl App for MyApp {
             let total_maze_width = maze.width() as f32 * cell_size;
             let total_maze_height = maze.height() as f32 * cell_size;
 
-            let available_rect = ctx.available_rect();
-            let available_size = available_rect.size();
-            let (_response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+            let available_size = ui.available_size();
+            let (response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+            let available_rect = response.rect;
+
+            if self.auto_fit_pending {
+                self.zoom = fit_zoom_to_available(&maze, available_size);
+                self.auto_fit_pending = false;
+            }
 
             if let Some(old_size) = self.prev_available_size {
                 if old_size != available_size {
@@ -426,8 +433,23 @@ fn regenerate(app: &mut MyApp) {
     app.animation_index = 0;
     app.start_cell = None;
     app.end_cell = None;
+    app.auto_fit_pending = true;
     let mut lock = app.maze.lock().unwrap();
     *lock = generate_maze(app.algorithm, app.seed, app.width, app.height);
+}
+
+fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
+    let base_cell_size = 30.0;
+    let maze_w = (maze.width() as f32) * base_cell_size;
+    let maze_h = (maze.height() as f32) * base_cell_size;
+    if maze_w <= 0.0 || maze_h <= 0.0 {
+        return 1.0;
+    }
+
+    let padding = 24.0;
+    let fit_w = (available_size.x - padding).max(32.0) / maze_w;
+    let fit_h = (available_size.y - padding).max(32.0) / maze_h;
+    fit_w.min(fit_h).clamp(0.1, 5.0)
 }
 
 fn tick_animation(app: &mut MyApp) {
