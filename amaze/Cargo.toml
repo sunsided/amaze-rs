@@ -13,7 +13,7 @@ edition = "2024"
 rust-version = "1.85.0"
 
 [features]
-default = ["renderers", "generators", "solvers"]
+default = ["renderers", "generators", "solvers", "representations"]
 
 generators = [
     "generator-growing-tree",
@@ -41,11 +41,14 @@ solver-dead-end = []
 renderers = ["unicode-renderer", "pgm-renderer"]
 unicode-renderer = []
 pgm-renderer = []
+representations = []
+petgraph = ["dep:petgraph", "representations"]
 serde = ["dep:serde"]
 
 [dependencies]
 rand = "^0.9.3"
 serde = { version = "1", features = ["derive"], optional = true }
+petgraph = { version = "0.8", optional = true }
 
 [dev-dependencies]
 indoc = "2.0.7"

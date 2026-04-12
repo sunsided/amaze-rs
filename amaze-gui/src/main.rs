@@ -238,11 +238,11 @@ impl App for MyApp {
                 self.auto_fit_pending = false;
             }
 
-            if let Some(old_size) = self.prev_available_size {
-                if old_size != available_size {
-                    let delta = available_size - old_size;
-                    self.pan += delta / 2.0;
-                }
+            if let Some(old_size) = self.prev_available_size
+                && old_size != available_size
+            {
+                let delta = available_size - old_size;
+                self.pan += delta / 2.0;
             }
             self.prev_available_size = Some(available_size);
 
@@ -271,14 +271,14 @@ impl App for MyApp {
                 }
             });
 
-            if ctx.input(|i| i.pointer.any_click()) {
-                if let Some(clicked) = hovered_coord {
-                    if self.start_cell.is_none() || self.end_cell.is_some() {
-                        self.start_cell = Some(clicked);
-                        self.end_cell = None;
-                    } else {
-                        self.end_cell = Some(clicked);
-                    }
+            if ctx.input(|i| i.pointer.any_click())
+                && let Some(clicked) = hovered_coord
+            {
+                if self.start_cell.is_none() || self.end_cell.is_some() {
+                    self.start_cell = Some(clicked);
+                    self.end_cell = None;
+                } else {
+                    self.end_cell = Some(clicked);
                 }
             }
 
