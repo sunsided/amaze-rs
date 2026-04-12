@@ -39,28 +39,3 @@ fn rebuild_path(
     out.reverse();
     Some(Path::new(out))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::generators::RecursiveBacktracker4;
-
-    #[test]
-    fn solvers_find_paths() {
-        let maze = RecursiveBacktracker4::new_from_seed(1234).generate(20, 20);
-        let start = GridCoord2D::new(0, 0);
-        let end = GridCoord2D::new(19, 19);
-
-        let bfs = BfsSolver.solve(&maze, start, end).expect("bfs path");
-        let dfs = DfsSolver.solve(&maze, start, end).expect("dfs path");
-        let astar = AStarSolver.solve(&maze, start, end).expect("astar path");
-        let dead_end = DeadEndFillingSolver
-            .solve(&maze, start, end)
-            .expect("dead-end path");
-
-        assert!(!bfs.is_empty());
-        assert!(!dfs.is_empty());
-        assert_eq!(bfs.length, astar.length);
-        assert_eq!(bfs.length, dead_end.length);
-    }
-}

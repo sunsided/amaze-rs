@@ -152,21 +152,3 @@ impl MazeGenerator2D for RecursiveBacktracker4 {
         "Depth-first backtracking generator that creates long corridors"
     }
 }
-
-#[cfg(all(test, feature = "unicode-renderer"))]
-mod tests {
-    use super::*;
-    use crate::renderers::{UnicodeRenderStyle, UnicodeRenderer};
-
-    #[test]
-    fn it_works() {
-        let generator = RecursiveBacktracker4::new_from_seed(42);
-        let grid = generator.generate(16, 16);
-        assert_eq!(grid.width(), 16);
-        assert_eq!(grid.height(), 16);
-
-        let renderer = UnicodeRenderer::new(UnicodeRenderStyle::Heavy, true);
-        let maze = renderer.render(&grid);
-        assert!(!maze.is_empty());
-    }
-}

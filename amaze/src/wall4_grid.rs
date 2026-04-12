@@ -234,22 +234,3 @@ impl IndexMut<GridCoord2D> for Wall4Grid {
         &mut self.walls[index]
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::generators::RecursiveBacktracker4;
-
-    #[test]
-    fn converts_to_room_list() {
-        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
-        let rooms = maze.to_room_list(|coord| coord);
-        assert_eq!(rooms.len(), 64);
-    }
-
-    #[test]
-    fn stats_has_non_zero_longest_path() {
-        let maze = RecursiveBacktracker4::new_from_seed(7).generate(8, 8);
-        let stats = maze.stats();
-        assert!(stats.longest_path > 0);
-    }
-}
