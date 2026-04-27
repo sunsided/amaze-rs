@@ -1,5 +1,8 @@
 use crate::direction6::Direction6;
-use crate::generators::MazeGenerator6D;
+use crate::generators::{
+    HexGenerationStep, HexGenerationSteps, HexGenerationVisitor, MazeGenerator6D,
+    VecHexGenerationVisitor,
+};
 use crate::hex_coord::HexCoord;
 use crate::wall6_grid::Wall6Grid;
 use rand::SeedableRng;
@@ -32,37 +35,63 @@ impl RecursiveBacktracker6 {
     }
 
     pub fn generate(&self, width: usize, height: usize) -> Wall6Grid {
+        self.generate_with_steps(width, height).0
+    }
+
+    pub fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        HexGenerationSteps::new(self.generate_with_steps(width, height).1)
+    }
+
+    fn generate_with_steps(
+        &self,
+        width: usize,
+        height: usize,
+    ) -> (Wall6Grid, Vec<HexGenerationStep>) {
+        let mut cells = Wall6Grid::new(width, height);
+        let mut visitor = VecHexGenerationVisitor::default();
+
         if width == 0 || height == 0 {
-            return Wall6Grid::new(width, height);
+            visitor.on_step(&HexGenerationStep::Complete);
+            return (cells, visitor.into_steps());
         }
 
-        let mut cells = Wall6Grid::new(width, height);
         let mut visit_map = vec![false; width * height];
         let start = HexCoord::new(0, 0);
-        let mut backtrace = Vec::new();
+        let mut backtrace: Vec<HexCoord> = Vec::new();
         let mut rng = StdRng::seed_from_u64(self.rng_seed);
 
         let mut current = start;
         loop {
-            visit_map[(current.r as usize) * width + current.q as usize] = true;
+            let idx = (current.r as usize) * width + current.q as usize;
+            if !visit_map[idx] {
+                visitor.on_step(&HexGenerationStep::Visit { cell: current });
+            }
+            visit_map[idx] = true;
 
             if let Some(next) =
                 Self::select_random_unvisited_neighbor(&mut rng, &visit_map, current, width, height)
             {
                 backtrace.push(current);
+                visitor.on_step(&HexGenerationStep::AddToFrontier { cell: current });
                 cells.remove_wall_between(current, next);
+                visitor.on_step(&HexGenerationStep::Carve {
+                    from: current,
+                    to: next,
+                });
                 current = next;
                 continue;
             }
 
             if let Some(cell) = backtrace.pop() {
                 current = cell;
+                visitor.on_step(&HexGenerationStep::Backtrack { to: cell });
             } else {
                 break;
             }
         }
 
-        cells
+        visitor.on_step(&HexGenerationStep::Complete);
+        (cells, visitor.into_steps())
     }
 
     fn select_random_unvisited_neighbor(
@@ -101,6 +130,10 @@ impl MazeGenerator6D for RecursiveBacktracker6 {
 
     fn generate(&self, width: usize, height: usize) -> Wall6Grid {
         self.generate(width, height)
+    }
+
+    fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        self.generate_steps(width, height)
     }
 
     fn name(&self) -> &'static str {

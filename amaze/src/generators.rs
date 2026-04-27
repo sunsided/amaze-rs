@@ -47,6 +47,12 @@ pub use wilson4::Wilson4;
     feature = "generator-hex-growing-tree",
     feature = "generator-hex-aldous-broder",
 ))]
+use crate::hex_coord::HexCoord;
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
 use crate::wall6_grid::Wall6Grid;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,6 +134,97 @@ pub trait MazeGenerator2D {
     feature = "generator-hex-growing-tree",
     feature = "generator-hex-aldous-broder",
 ))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum HexGenerationStep {
+    Visit { cell: HexCoord },
+    Carve { from: HexCoord, to: HexCoord },
+    Backtrack { to: HexCoord },
+    AddToFrontier { cell: HexCoord },
+    Complete,
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+pub trait HexGenerationVisitor {
+    fn on_step(&mut self, step: &HexGenerationStep);
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+#[derive(Default)]
+pub struct VecHexGenerationVisitor {
+    steps: Vec<HexGenerationStep>,
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+impl VecHexGenerationVisitor {
+    pub fn into_steps(self) -> Vec<HexGenerationStep> {
+        self.steps
+    }
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+impl HexGenerationVisitor for VecHexGenerationVisitor {
+    fn on_step(&mut self, step: &HexGenerationStep) {
+        self.steps.push(step.clone());
+    }
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+pub struct HexGenerationSteps {
+    inner: std::vec::IntoIter<HexGenerationStep>,
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+impl HexGenerationSteps {
+    pub fn new(steps: Vec<HexGenerationStep>) -> Self {
+        Self {
+            inner: steps.into_iter(),
+        }
+    }
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+impl Iterator for HexGenerationSteps {
+    type Item = HexGenerationStep;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
 pub trait MazeGenerator6D {
     fn new_random() -> Self
     where
@@ -137,9 +234,9 @@ pub trait MazeGenerator6D {
         Self: Sized;
     fn generate(&self, width: usize, height: usize) -> Wall6Grid;
 
-    fn generate_steps(&self, width: usize, height: usize) -> GenerationSteps {
+    fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
         let _ = self.generate(width, height);
-        GenerationSteps::new(vec![GenerationStep::Complete])
+        HexGenerationSteps::new(vec![HexGenerationStep::Complete])
     }
 
     fn name(&self) -> &'static str {

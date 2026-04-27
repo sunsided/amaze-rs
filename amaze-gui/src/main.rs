@@ -1,6 +1,8 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType, solve_bfs};
 #[cfg(feature = "generator-hex")]
-use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
+use amaze::generators::{
+    AldousBroder6, GrowingTree6, HexGenerationStep, MazeGenerator6D, RecursiveBacktracker6,
+};
 use amaze::generators::{
     BinaryTree4, Eller4, GenerationStep, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
     Prim4, RecursiveBacktracker4, Sidewinder4, Wilson4,
@@ -88,6 +90,8 @@ struct MyApp {
     start_cell: Option<GridCoord2D>,
     end_cell: Option<GridCoord2D>,
     animation_steps: Vec<GenerationStep>,
+    #[cfg(feature = "generator-hex")]
+    hex_animation_steps: Vec<HexGenerationStep>,
     animation_index: usize,
     is_animating: bool,
     auto_fit_pending: bool,
@@ -129,6 +133,8 @@ impl Default for MyApp {
             start_cell: None,
             end_cell: None,
             animation_steps: Vec::new(),
+            #[cfg(feature = "generator-hex")]
+            hex_animation_steps: Vec::new(),
             animation_index: 0,
             is_animating: false,
             auto_fit_pending: true,
@@ -393,12 +399,32 @@ impl App for MyApp {
 
             ui.separator();
             if self.mode == Mode::Maze && ui.button("Animate Generation").clicked() {
-                self.animation_steps =
-                    generate_steps(self.algorithm, self.seed, self.width, self.height);
-                self.animation_index = 0;
-                self.is_animating = true;
-                let mut lock = self.maze.lock().unwrap();
-                *lock = Wall4Grid::new(self.width, self.height);
+                #[cfg(feature = "generator-hex")]
+                if self.algorithm.is_hex() {
+                    self.hex_animation_steps =
+                        generate_hex_steps(self.algorithm, self.seed, self.width, self.height);
+                    self.animation_steps.clear();
+                    self.animation_index = 0;
+                    self.is_animating = true;
+                    let mut lock = self.hex_maze.lock().unwrap();
+                    *lock = Some(Wall6Grid::new(self.width, self.height));
+                } else {
+                    self.animation_steps =
+                        generate_steps(self.algorithm, self.seed, self.width, self.height);
+                    self.animation_index = 0;
+                    self.is_animating = true;
+                    let mut lock = self.maze.lock().unwrap();
+                    *lock = Wall4Grid::new(self.width, self.height);
+                }
+                #[cfg(not(feature = "generator-hex"))]
+                {
+                    self.animation_steps =
+                        generate_steps(self.algorithm, self.seed, self.width, self.height);
+                    self.animation_index = 0;
+                    self.is_animating = true;
+                    let mut lock = self.maze.lock().unwrap();
+                    *lock = Wall4Grid::new(self.width, self.height);
+                }
             }
 
             if ui.button("Reset View").clicked() {
@@ -531,9 +557,32 @@ fn generate_steps(
     }
 }
 
+#[cfg(feature = "generator-hex")]
+fn generate_hex_steps(
+    algorithm: AlgorithmChoice,
+    seed: u64,
+    width: usize,
+    height: usize,
+) -> Vec<HexGenerationStep> {
+    match algorithm {
+        AlgorithmChoice::RecursiveBacktracker6 => RecursiveBacktracker6::new_from_seed(seed)
+            .generate_steps(width, height)
+            .collect(),
+        AlgorithmChoice::GrowingTree6 => <GrowingTree6 as MazeGenerator6D>::new_from_seed(seed)
+            .generate_steps(width, height)
+            .collect(),
+        AlgorithmChoice::AldousBroder6 => AldousBroder6::new_from_seed(seed)
+            .generate_steps(width, height)
+            .collect(),
+        _ => vec![HexGenerationStep::Complete],
+    }
+}
+
 fn regenerate_maze(app: &mut MyApp) {
     app.is_animating = false;
     app.animation_steps.clear();
+    #[cfg(feature = "generator-hex")]
+    app.hex_animation_steps.clear();
     app.animation_index = 0;
     app.start_cell = None;
     app.end_cell = None;
@@ -986,6 +1035,33 @@ fn fit_zoom_to_dungeon(dungeon: &DungeonGrid, available_size: egui::Vec2) -> f32
 
 fn tick_animation(app: &mut MyApp) {
     if !app.is_animating {
+        return;
+    }
+
+    #[cfg(feature = "generator-hex")]
+    if !app.hex_animation_steps.is_empty() {
+        let mut lock = app.hex_maze.lock().unwrap();
+        let Some(maze) = lock.as_mut() else {
+            app.is_animating = false;
+            return;
+        };
+        let mut processed = 0usize;
+        while app.animation_index < app.hex_animation_steps.len() && processed < 8 {
+            match app.hex_animation_steps[app.animation_index] {
+                HexGenerationStep::Carve { from, to } => maze.remove_wall_between(from, to),
+                HexGenerationStep::Complete => {
+                    app.is_animating = false;
+                    break;
+                }
+                _ => {}
+            }
+            app.animation_index += 1;
+            processed += 1;
+        }
+
+        if app.animation_index >= app.hex_animation_steps.len() {
+            app.is_animating = false;
+        }
         return;
     }
 

@@ -1,5 +1,8 @@
 use crate::direction6::Direction6;
-use crate::generators::{CellSelector, MazeGenerator6D, NewestCell};
+use crate::generators::{
+    CellSelector, HexGenerationStep, HexGenerationSteps, HexGenerationVisitor, MazeGenerator6D,
+    NewestCell, VecHexGenerationVisitor,
+};
 use crate::hex_coord::HexCoord;
 use crate::wall6_grid::Wall6Grid;
 use rand::prelude::SliceRandom;
@@ -33,13 +36,28 @@ where
     }
 
     pub fn generate(&self, width: usize, height: usize) -> Wall6Grid {
+        self.generate_with_steps(width, height).0
+    }
+
+    pub fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        HexGenerationSteps::new(self.generate_with_steps(width, height).1)
+    }
+
+    fn generate_with_steps(
+        &self,
+        width: usize,
+        height: usize,
+    ) -> (Wall6Grid, Vec<HexGenerationStep>) {
+        let mut grid = Wall6Grid::new(width, height);
+        let mut visitor = VecHexGenerationVisitor::default();
+
         if width == 0 || height == 0 {
-            return Wall6Grid::new(width, height);
+            visitor.on_step(&HexGenerationStep::Complete);
+            return (grid, visitor.into_steps());
         }
 
-        let mut grid = Wall6Grid::new(width, height);
         let mut visited = vec![false; width * height];
-        let mut frontier = Vec::new();
+        let mut frontier: Vec<HexCoord> = Vec::new();
         let mut rng = StdRng::seed_from_u64(self.rng_seed);
 
         let start = HexCoord::new(
@@ -49,7 +67,9 @@ where
 
         let start_idx = (start.r as usize) * width + start.q as usize;
         visited[start_idx] = true;
+        visitor.on_step(&HexGenerationStep::Visit { cell: start });
         frontier.push(start);
+        visitor.on_step(&HexGenerationStep::AddToFrontier { cell: start });
 
         while !frontier.is_empty() {
             let idx = self.selector.select(&mut rng, frontier.len());
@@ -64,12 +84,19 @@ where
             candidates.shuffle(&mut rng);
             let next = candidates[0];
             grid.remove_wall_between(cell, next);
+            visitor.on_step(&HexGenerationStep::Carve {
+                from: cell,
+                to: next,
+            });
             let next_idx = (next.r as usize) * width + next.q as usize;
             visited[next_idx] = true;
+            visitor.on_step(&HexGenerationStep::Visit { cell: next });
             frontier.push(next);
+            visitor.on_step(&HexGenerationStep::AddToFrontier { cell: next });
         }
 
-        grid
+        visitor.on_step(&HexGenerationStep::Complete);
+        (grid, visitor.into_steps())
     }
 
     fn unvisited_neighbors(
@@ -115,6 +142,10 @@ where
 
     fn generate(&self, width: usize, height: usize) -> Wall6Grid {
         self.generate(width, height)
+    }
+
+    fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        self.generate_steps(width, height)
     }
 
     fn name(&self) -> &'static str {

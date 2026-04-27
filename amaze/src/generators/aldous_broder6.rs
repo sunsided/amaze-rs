@@ -1,5 +1,8 @@
 use crate::direction6::Direction6;
-use crate::generators::MazeGenerator6D;
+use crate::generators::{
+    HexGenerationStep, HexGenerationSteps, HexGenerationVisitor, MazeGenerator6D,
+    VecHexGenerationVisitor,
+};
 use crate::hex_coord::HexCoord;
 use crate::wall6_grid::Wall6Grid;
 use rand::RngExt;
@@ -32,11 +35,26 @@ impl AldousBroder6 {
     }
 
     pub fn generate(&self, width: usize, height: usize) -> Wall6Grid {
+        self.generate_with_steps(width, height).0
+    }
+
+    pub fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        HexGenerationSteps::new(self.generate_with_steps(width, height).1)
+    }
+
+    fn generate_with_steps(
+        &self,
+        width: usize,
+        height: usize,
+    ) -> (Wall6Grid, Vec<HexGenerationStep>) {
+        let mut grid = Wall6Grid::new(width, height);
+        let mut visitor = VecHexGenerationVisitor::default();
+
         if width == 0 || height == 0 {
-            return Wall6Grid::new(width, height);
+            visitor.on_step(&HexGenerationStep::Complete);
+            return (grid, visitor.into_steps());
         }
 
-        let mut grid = Wall6Grid::new(width, height);
         let mut visited = vec![false; width * height];
         let mut visited_count = 0usize;
         let total_cells = width * height;
@@ -51,6 +69,7 @@ impl AldousBroder6 {
         if !visited[idx] {
             visited[idx] = true;
             visited_count += 1;
+            visitor.on_step(&HexGenerationStep::Visit { cell: current });
         }
 
         while visited_count < total_cells {
@@ -62,12 +81,18 @@ impl AldousBroder6 {
                 visited[next_idx] = true;
                 visited_count += 1;
                 grid.remove_wall_between(current, next);
+                visitor.on_step(&HexGenerationStep::Carve {
+                    from: current,
+                    to: next,
+                });
+                visitor.on_step(&HexGenerationStep::Visit { cell: next });
             }
 
             current = next;
         }
 
-        grid
+        visitor.on_step(&HexGenerationStep::Complete);
+        (grid, visitor.into_steps())
     }
 
     fn neighbors(cell: HexCoord, width: usize, height: usize) -> Vec<HexCoord> {
@@ -92,6 +117,10 @@ impl MazeGenerator6D for AldousBroder6 {
 
     fn generate(&self, width: usize, height: usize) -> Wall6Grid {
         self.generate(width, height)
+    }
+
+    fn generate_steps(&self, width: usize, height: usize) -> HexGenerationSteps {
+        self.generate_steps(width, height)
     }
 
     fn name(&self) -> &'static str {
