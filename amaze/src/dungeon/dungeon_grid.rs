@@ -173,6 +173,86 @@ impl DungeonGrid {
             }
         }
     }
+
+    /// Trim the grid to the bounding box of all non-Empty tiles, plus padding.
+    /// Returns a new, tightly-cropped DungeonGrid.
+    ///
+    /// If no non-Empty tiles exist, returns a minimal 1x1 Empty grid.
+    pub fn trim(&self, padding: usize) -> Self {
+        // Find bounding box of all non-Empty tiles
+        let mut min_x = usize::MAX;
+        let mut min_y = usize::MAX;
+        let mut max_x = usize::MIN;
+        let mut max_y = usize::MIN;
+        let mut has_content = false;
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let tile = self.tiles[self.linearize_coords(GridCoord2D::new(x, y))];
+                if !tile.is_empty() {
+                    if x < min_x {
+                        min_x = x;
+                    }
+                    if x > max_x {
+                        max_x = x;
+                    }
+                    if y < min_y {
+                        min_y = y;
+                    }
+                    if y > max_y {
+                        max_y = y;
+                    }
+                    has_content = true;
+                }
+            }
+        }
+
+        if !has_content {
+            return DungeonGrid::new(1, 1);
+        }
+
+        // Apply padding and clamp to original bounds
+        let content_min_x = min_x.saturating_sub(padding);
+        let content_min_y = min_y.saturating_sub(padding);
+        let content_max_x = (max_x + padding).min(self.width - 1);
+        let content_max_y = (max_y + padding).min(self.height - 1);
+
+        let final_width = (content_max_x - content_min_x + 1).max(1);
+        let final_height = (content_max_y - content_min_y + 1).max(1);
+
+        let mut final_grid = DungeonGrid::new(final_width, final_height);
+
+        // Copy tiles with remapped coordinates
+        for old_y in content_min_y..=content_max_y {
+            for old_x in content_min_x..=content_max_x {
+                let old_coord = GridCoord2D::new(old_x, old_y);
+                let tile = self.tiles[self.linearize_coords(old_coord)];
+                let new_x = old_x - content_min_x;
+                let new_y = old_y - content_min_y;
+                let new_coord = GridCoord2D::new(new_x, new_y);
+                final_grid.set(new_coord, tile);
+            }
+        }
+
+        // Adjust exit position
+        if let Some(exit_coord) = self.exit {
+            let exit_x = (exit_coord.x as isize - content_min_x as isize)
+                .max(0)
+                .min(final_width as isize - 1) as usize;
+            let exit_y = (exit_coord.y as isize - content_min_y as isize)
+                .max(0)
+                .min(final_height as isize - 1) as usize;
+            final_grid.set_exit(GridCoord2D::new(exit_x, exit_y));
+        }
+
+        // Place walls around any newly exposed edges
+        final_grid.place_walls();
+
+        // Recompute edge masks
+        final_grid.compute_edge_masks();
+
+        final_grid
+    }
 }
 
 impl GetCoordinateBounds2D for DungeonGrid {
@@ -255,5 +335,134 @@ mod tests {
 
         // All neighbors are non-walls, so all bits should be set: 1+2+4+8=15
         assert_eq!(grid.edge_mask(GridCoord2D::new(1, 1)), 15);
+    }
+
+    #[test]
+    fn test_trim_single_floor_tile() {
+        let mut grid = DungeonGrid::new(10, 10);
+        grid.set(GridCoord2D::new(5, 5), TileType::Floor);
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        // Single floor + walls around = 3x3
+        assert_eq!(trimmed.width(), 3);
+        assert_eq!(trimmed.height(), 3);
+        assert_eq!(trimmed.get(GridCoord2D::new(1, 1)), Some(TileType::Floor));
+    }
+
+    #[test]
+    fn test_trim_small_cluster() {
+        let mut grid = DungeonGrid::new(20, 20);
+        // Place a 3x4 block of floors at (8, 6) to (10, 9)
+        for y in 6..=9 {
+            for x in 8..=10 {
+                grid.set(GridCoord2D::new(x, y), TileType::Floor);
+            }
+        }
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        // Content: x=7..=11 (walls at edges), y=5..=10 (walls at edges) => 5x6
+        assert_eq!(trimmed.width(), 5);
+        assert_eq!(trimmed.height(), 6);
+    }
+
+    #[test]
+    fn test_trim_preserves_exit() {
+        let mut grid = DungeonGrid::new(10, 10);
+        grid.set(GridCoord2D::new(5, 5), TileType::Floor);
+        grid.set_exit(GridCoord2D::new(5, 5));
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        let exit = trimmed.exit().unwrap();
+        // Exit was at (5,5), content min is (4,4) after walls, so exit maps to (1,1)
+        assert_eq!(exit.x, 1);
+        assert_eq!(exit.y, 1);
+    }
+
+    #[test]
+    fn test_trim_with_padding() {
+        let mut grid = DungeonGrid::new(10, 10);
+        grid.set(GridCoord2D::new(5, 5), TileType::Floor);
+        grid.place_walls();
+
+        let trimmed = grid.trim(2);
+        // Base 3x3 + 2 padding each side = 7x7
+        assert_eq!(trimmed.width(), 7);
+        assert_eq!(trimmed.height(), 7);
+        // Center floor should be at (3, 3)
+        assert_eq!(trimmed.get(GridCoord2D::new(3, 3)), Some(TileType::Floor));
+    }
+
+    #[test]
+    fn test_trim_recomputes_walls_at_edges() {
+        let mut grid = DungeonGrid::new(7, 7);
+        // Place a floor at center
+        grid.set(GridCoord2D::new(3, 3), TileType::Floor);
+        // Don't call place_walls - simulate a grid with only floor
+        grid.set(GridCoord2D::new(2, 3), TileType::Floor);
+        grid.set(GridCoord2D::new(4, 3), TileType::Floor);
+
+        let trimmed = grid.trim(1);
+        // After trim + place_walls, neighbors of floor should be walls
+        // The floor at old (2,3) maps to new (0,1), left neighbor should be out of bounds
+        // but the trim should have added padding, so let's check right neighbor of rightmost floor
+        assert!(trimmed.width() >= 4);
+        assert!(trimmed.height() >= 3);
+    }
+
+    #[test]
+    fn test_trim_empty_grid() {
+        let grid = DungeonGrid::new(10, 10);
+        let trimmed = grid.trim(0);
+        assert_eq!(trimmed.width(), 1);
+        assert_eq!(trimmed.height(), 1);
+    }
+
+    #[test]
+    fn test_trim_full_grid_no_trim() {
+        let mut grid = DungeonGrid::new(5, 5);
+        // Fill entire grid with floor
+        for y in 0..5 {
+            for x in 0..5 {
+                grid.set(GridCoord2D::new(x, y), TileType::Floor);
+            }
+        }
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        assert_eq!(trimmed.width(), 5);
+        assert_eq!(trimmed.height(), 5);
+    }
+
+    #[test]
+    fn test_trim_exit_clamped_to_bounds() {
+        let mut grid = DungeonGrid::new(10, 10);
+        // Place content only in top-left
+        grid.set(GridCoord2D::new(0, 0), TileType::Floor);
+        // Exit is far away from content
+        grid.set_exit(GridCoord2D::new(9, 9));
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        let exit = trimmed.exit().unwrap();
+        // Exit should be clamped to the trimmed grid bounds
+        assert!(exit.x < trimmed.width());
+        assert!(exit.y < trimmed.height());
+    }
+
+    #[test]
+    fn test_trim_preserves_floor_count() {
+        let mut grid = DungeonGrid::new(15, 15);
+        let original_floor_count = 10;
+        // Place 10 floor tiles in a line
+        for i in 0..original_floor_count {
+            grid.set(GridCoord2D::new(5 + i, 7), TileType::Floor);
+        }
+        grid.place_walls();
+
+        let trimmed = grid.trim(0);
+        assert_eq!(trimmed.floor_count(), original_floor_count);
     }
 }

@@ -2,9 +2,15 @@
 
 A playground for maze and procedural dungeon generation.
 
+### Maze Mode
+
 | Hex Mazes | Rectangular Mazes |
 | --- | --- |
 | ![Hexagonal maze generation in the GUI](docs/gui-hex.png) | ![Rectangular maze generation in the GUI](docs/gui.png) |
+
+### Dungeon Mode
+
+![Rooms-type Dungeon generation in the GUI](docs/gui-dungeon.png)
 
 ## Features
 

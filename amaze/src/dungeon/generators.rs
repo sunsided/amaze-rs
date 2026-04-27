@@ -363,11 +363,16 @@ impl DungeonWalkGenerator {
             }
         }
 
-        // Post-processing
-        grid.place_walls();
+        // Set exit before trimming
+        grid.set_exit(last_floor_pos);
+
+        // Trim to content bounds (also calls place_walls and compute_edge_masks)
+        grid = grid.trim(self.trim_padding);
+
+        // Emit wall steps from trimmed grid
         if emit_wall_steps {
-            for y in 0..height {
-                for x in 0..width {
+            for y in 0..grid.height() {
+                for x in 0..grid.width() {
                     let coord = GridCoord2D::new(x, y);
                     if grid.get(coord).unwrap().is_wall() {
                         visitor.on_step(&DungeonGenerationStep::PlaceWall { coord });
@@ -376,12 +381,10 @@ impl DungeonWalkGenerator {
             }
         }
 
-        grid.set_exit(last_floor_pos);
+        let trimmed_exit = grid.exit().unwrap_or(last_floor_pos);
         visitor.on_step(&DungeonGenerationStep::SetExit {
-            coord: last_floor_pos,
+            coord: trimmed_exit,
         });
-
-        grid.compute_edge_masks();
 
         visitor.on_step(&DungeonGenerationStep::Complete);
         grid
@@ -772,15 +775,30 @@ mod generator_tests {
     }
 
     #[test]
-    fn test_generator_fixed_mode_unchanged() {
-        let generator =
-            DungeonWalkGenerator::new_random(DungeonType::Caverns).with_dynamic_resize(false);
+    fn test_generator_fixed_mode_trims_output() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Caverns)
+            .with_dynamic_resize(false)
+            .with_trim_padding(0);
 
         let grid = generator.generate(40, 30, 200);
 
-        // Fixed mode should produce exactly the requested dimensions
-        assert_eq!(grid.width(), 40);
-        assert_eq!(grid.height(), 30);
+        // Fixed mode should now trim to content bounds
+        assert!(grid.width() < 40);
+        assert!(grid.height() < 30);
+        assert!(grid.floor_count() > 0);
+    }
+
+    #[test]
+    fn test_generator_fixed_mode_with_padding() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Caverns)
+            .with_dynamic_resize(false)
+            .with_trim_padding(2);
+
+        let grid = generator.generate(40, 30, 200);
+
+        assert!(grid.width() > 0);
+        assert!(grid.height() > 0);
+        assert!(grid.floor_count() > 0);
     }
 
     #[test]
