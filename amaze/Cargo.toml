@@ -8,7 +8,7 @@ homepage = "https://github.com/sunsided/amaze-rs"
 repository = "https://github.com/sunsided/amaze-rs"
 license = "EUPL-1.2 OR MIT OR Apache-2.0"
 readme = "../README.md"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.85.0"
 
