@@ -59,16 +59,25 @@ tasks:
     cmds:
       - cargo build
 
-  show-gui:
+  run:
     desc: Show the maze GUI
+    aliases:
+      - gui
+      - run:gui
+      - show-gui
+      - example:gui
     preconditions:
       - sh: command -v cargo >/dev/null 2>&1
         msg: cargo is not installed. Please install Rust via https://rustup.rs
     cmds:
       - cargo run --bin amaze-gui
 
-  show-example:
+  run:terminal:
     desc: Render a maze in terminal output
+    aliases:
+      - cli
+      - terminal
+      - example:cli
     preconditions:
       - sh: command -v cargo >/dev/null 2>&1
         msg: cargo is not installed. Please install Rust via https://rustup.rs
@@ -80,8 +89,12 @@ tasks:
         --height {{default .DEFAULT_HEIGHT .HEIGHT}}
         --style {{default .DEFAULT_STYLE .STYLE}}
 
-  show-example-ppm:
+  run:ppm:
     desc: Render a maze in PPM format
+    aliases:
+      - ppm
+      - example:ppm
+      - show-example-ppm
     preconditions:
       - sh: command -v cargo >/dev/null 2>&1
         msg: cargo is not installed. Please install Rust via https://rustup.rs
@@ -93,8 +106,12 @@ tasks:
         --height {{default .DEFAULT_HEIGHT .HEIGHT}}
         --style ppm | tee test.ppm
 
-  show-example-pbm:
+  run:pbm:
     desc: Render a maze in PBM format
+    aliases:
+      - pbm
+      - example:pbm
+      - show-example-pbm
     preconditions:
       - sh: command -v cargo >/dev/null 2>&1
         msg: cargo is not installed. Please install Rust via https://rustup.rs

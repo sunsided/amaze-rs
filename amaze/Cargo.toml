@@ -13,8 +13,10 @@ edition = "2024"
 rust-version = "1.85.0"
 
 [features]
+## Enables all default features: renderers, generators, solvers, and representations
 default = ["renderers", "generators", "solvers", "representations"]
 
+## Enables all 4-connected grid maze generation algorithms
 generators = [
     "generator-growing-tree",
     "generator-kruskal",
@@ -25,40 +27,68 @@ generators = [
     "generator-binary-tree",
     "generator-prim",
 ]
+## Growing tree algorithm for 4-connected grids
 generator-growing-tree = []
+## Kruskal's algorithm for 4-connected grids
 generator-kruskal = []
+## Eller's algorithm for 4-connected grids
 generator-eller = []
+## Wilson's algorithm for 4-connected grids
 generator-wilson = []
+## Hunt and kill algorithm for 4-connected grids
 generator-hunt-and-kill = []
+## Sidewinder algorithm for 4-connected grids
 generator-sidewinder = []
+## Binary tree algorithm for 4-connected grids
 generator-binary-tree = []
+## Prim's algorithm for 4-connected grids
 generator-prim = []
 
+## Enables all hexagonal (6-connected) grid maze generation algorithms
 generators-hex= [
     "generator-hex-recursive-backtracker",
     "generator-hex-growing-tree",
     "generator-hex-aldous-broder",
 ]
+## Recursive backtracker algorithm for hex grids
 generator-hex-recursive-backtracker = []
+## Growing tree algorithm for hex grids
 generator-hex-growing-tree = []
+## Aldous-Broder algorithm for hex grids
 generator-hex-aldous-broder = []
 
+## Enables all maze solving algorithms
 solvers = ["solver-bfs", "solver-dfs", "solver-astar", "solver-dead-end"]
+## Breadth-first search solver
 solver-bfs = []
+## Depth-first search solver
 solver-dfs = []
+## A* pathfinding solver
 solver-astar = []
+## Dead-end filler solver
 solver-dead-end = []
 
+## Enables all maze rendering backends
 renderers = ["unicode-renderer", "pgm-renderer"]
+## Unicode/terminal-based maze renderer
 unicode-renderer = []
+## PGM (Portable GrayMap) image maze renderer
 pgm-renderer = []
+## Enables standard maze representations (4-connected grids)
 representations = []
+## Enables hexagonal maze representations
 hex-representations = ["representations"]
+## Enables dungeon/cave representations
 dungeon-representations = ["representations"]
+## Binary file format support for maze serialization
 binary-format = []
+## JSON file format support for maze serialization
 json-format = ["dep:serde_json", "dep:serde"]
+## File I/O support combining binary and JSON formats
 file-io = ["binary-format", "json-format"]
+## Petgraph integration for graph-based maze operations
 petgraph = ["dep:petgraph", "representations"]
+## Serde serialization support
 serde = ["dep:serde"]
 
 [dependencies]

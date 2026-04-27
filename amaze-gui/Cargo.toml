@@ -6,7 +6,9 @@ edition = "2024"
 rust-version = "1.92.0"
 
 [features]
+## Enables hexagonal maze generation in the GUI
 default = ["generators-hex"]
+## Enables all hexagonal grid maze generation algorithms via the amaze crate
 generators-hex= ["amaze/generators-hex"]
 
 [dependencies]
