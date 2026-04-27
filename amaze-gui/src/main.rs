@@ -72,6 +72,10 @@ struct MyApp {
     seed: u64,
     width: usize,
     height: usize,
+    maze_width: usize,
+    maze_height: usize,
+    dungeon_width: usize,
+    dungeon_height: usize,
     algorithm: AlgorithmChoice,
     maze: Mutex<Wall4Grid>,
     #[cfg(feature = "generators-hex")]
@@ -104,14 +108,18 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let initial_seed = 1337;
-        let initial_width = 18;
-        let initial_height = 24;
+        let maze_width = 30;
+        let maze_height = 50;
+        let dungeon_width = 100;
+        let dungeon_height = 100;
+        let initial_width = maze_width;
+        let initial_height = maze_height;
         let algorithm = AlgorithmChoice::RecursiveBacktracker;
         let maze = generate_maze(algorithm, initial_seed, initial_width, initial_height);
         let dungeon = DungeonWalkGenerator::new_from_seed(DungeonType::Rooms, initial_seed)
             .with_winding_probability(50)
-            .with_long_walk_range(9, 18)
-            .generate(initial_width, initial_height, 120);
+            .with_long_walk_range(7, 17)
+            .generate(dungeon_width, dungeon_height, 220);
 
         Self {
             mode: Mode::Maze,
@@ -119,16 +127,20 @@ impl Default for MyApp {
             seed: initial_seed,
             width: initial_width,
             height: initial_height,
+            maze_width,
+            maze_height,
+            dungeon_width,
+            dungeon_height,
             algorithm,
             maze: Mutex::new(maze),
             #[cfg(feature = "generators-hex")]
             hex_maze: Mutex::new(None),
             dungeon: Mutex::new(dungeon),
             dungeon_type: DungeonType::Rooms,
-            floor_count: 120,
+            floor_count: 220,
             winding_probability: 50,
-            long_walk_min: 9,
-            long_walk_max: 18,
+            long_walk_min: 7,
+            long_walk_max: 17,
             zoom: 1.0,
             pan: egui::Vec2::new(0.0, 0.0),
             dragging: false,
@@ -173,6 +185,28 @@ impl App for MyApp {
                 });
 
             if previous_mode != self.mode {
+                // Save current dimensions to the previous mode
+                match previous_mode {
+                    Mode::Maze => {
+                        self.maze_width = self.width;
+                        self.maze_height = self.height;
+                    }
+                    Mode::Dungeon => {
+                        self.dungeon_width = self.width;
+                        self.dungeon_height = self.height;
+                    }
+                }
+                // Restore dimensions for the new mode
+                match self.mode {
+                    Mode::Maze => {
+                        self.width = self.maze_width;
+                        self.height = self.maze_height;
+                    }
+                    Mode::Dungeon => {
+                        self.width = self.dungeon_width;
+                        self.height = self.dungeon_height;
+                    }
+                }
                 self.auto_fit_pending = true;
                 self.start_cell = None;
                 self.end_cell = None;
@@ -380,16 +414,21 @@ impl App for MyApp {
             if ui
                 .add(
                     egui::DragValue::new(&mut self.width)
-                        .range(5..=100)
+                        .range(5..=200)
                         .clamp_existing_to_range(false)
                         .speed(1.0),
                 )
                 .changed()
             {
-                if self.mode == Mode::Maze {
-                    regenerate_maze(self);
-                } else {
-                    regenerate_dungeon(self);
+                match self.mode {
+                    Mode::Maze => {
+                        self.maze_width = self.width;
+                        regenerate_maze(self);
+                    }
+                    Mode::Dungeon => {
+                        self.dungeon_width = self.width;
+                        regenerate_dungeon(self);
+                    }
                 }
             }
 
@@ -397,16 +436,21 @@ impl App for MyApp {
             if ui
                 .add(
                     egui::DragValue::new(&mut self.height)
-                        .range(5..=100)
+                        .range(5..=200)
                         .clamp_existing_to_range(false)
                         .speed(1.0),
                 )
                 .changed()
             {
-                if self.mode == Mode::Maze {
-                    regenerate_maze(self);
-                } else {
-                    regenerate_dungeon(self);
+                match self.mode {
+                    Mode::Maze => {
+                        self.maze_height = self.height;
+                        regenerate_maze(self);
+                    }
+                    Mode::Dungeon => {
+                        self.dungeon_height = self.height;
+                        regenerate_dungeon(self);
+                    }
                 }
             }
 
