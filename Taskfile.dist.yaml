@@ -128,12 +128,18 @@ tasks:
     desc: Build rustdoc
     aliases:
       - doc
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
     cmds:
-      - "{{.CARGO}} doc --no-deps --all-features"
+      - "cargo doc --no-deps --all-features"
 
   docs:open:
     desc: Build rustdoc (and open them)
     aliases:
       - doc:open
+    preconditions:
+      - sh: command -v cargo >/dev/null 2>&1
+        msg: cargo is not installed. Please install Rust via https://rustup.rs
     cmds:
-      - "{{.CARGO}} doc --no-deps --all-features --open"
+      - "cargo doc --no-deps --all-features --open"
