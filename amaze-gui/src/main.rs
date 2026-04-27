@@ -923,8 +923,11 @@ fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
     let spacing_x = radius * f32::sqrt(3.0);
     let spacing_y = radius * 1.5;
 
-    // Odd-r offset layout ("rectangular-ish"): odd rows shift right by half a column.
-    let total_width = (maze.width() as f32) * spacing_x + spacing_x * 0.5;
+    // Pointy-top axial layout forms a parallelogram: the rightmost cell in
+    // the last row is shifted `(height-1) * 0.5` hex-widths further right
+    // than the rightmost cell in the first row.
+    let skew = ((maze.height() as f32) - 1.0).max(0.0) * spacing_x * 0.5;
+    let total_width = (maze.width() as f32) * spacing_x + skew;
     let total_height = (maze.height() as f32 - 1.0) * spacing_y + 2.0 * radius;
 
     let available_size = ui.available_size();
@@ -951,25 +954,60 @@ fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
 
     let stroke = egui::Stroke::new(2.0, Color32::BLACK);
 
+    // Alternating cell fills. Hex grids can't be 2-colored with all neighbors
+    // distinct, so we use a 3-coloring based on axial coords: `(q - r) mod 3`.
+    // For each axial neighbor direction the delta of `q - r` is ±1 or ±2,
+    // which is never 0 mod 3, so no two adjacent hexes share a shade — the
+    // true analog of the rectangular `(x + y) % 2` checkerboard.
+    //
+    // We draw all hex fills as a single raw `Mesh`. Perimeter vertex
+    // *positions* are snapped to a fine sub-pixel grid so neighboring cells
+    // computing "the same" world-space corner from different centers end up
+    // with bit-identical positions, which keeps the rasterizer from leaving
+    // sub-pixel seams between them. We intentionally do *not* share the
+    // vertices themselves across cells, because neighbors carry different
+    // colors. Using a raw mesh also bypasses egui's AA feathering (which
+    // only applies to path-based shapes), eliminating the other source of
+    // inter-cell seams. Walls are still drawn as AA line segments on top.
+    let fill_shades = [
+        Color32::from_rgb(240, 240, 240),
+        Color32::from_rgb(228, 228, 228),
+        Color32::from_rgb(216, 216, 216),
+    ];
+
+    let angles: [f32; 6] = [
+        std::f32::consts::FRAC_PI_6,
+        std::f32::consts::FRAC_PI_6 * 3.0,
+        std::f32::consts::FRAC_PI_6 * 5.0,
+        std::f32::consts::FRAC_PI_6 * 7.0,
+        std::f32::consts::FRAC_PI_6 * 9.0,
+        std::f32::consts::FRAC_PI_6 * 11.0,
+    ];
+
+    let snap_scale = 8.0;
+    let snap = |pos: egui::Pos2| -> egui::Pos2 {
+        egui::pos2(
+            (pos.x * snap_scale).round() / snap_scale,
+            (pos.y * snap_scale).round() / snap_scale,
+        )
+    };
+
+    let mut fill_mesh = egui::epaint::Mesh::default();
+
+    // First pass: build the combined fill mesh and remember each cell's
+    // perimeter vertex positions for the wall-drawing pass. We keep the
+    // original (unsnapped) f32 positions for walls so they still sit exactly
+    // on their geometric cell boundaries.
+    let mut cell_vertices: Vec<[egui::Pos2; 6]> = Vec::with_capacity(maze.width() * maze.height());
+
     for r in 0..maze.height() {
         for q in 0..maze.width() {
-            let coord = HexCoord::new(q as isize, r as isize);
-            let wall = maze.get(coord).expect("coord in bounds");
-
-            // Odd-r offset: odd rows are shifted right by half a column,
-            // which avoids the cumulative parallelogram slant of pure axial layout.
-            let row_shift = if r % 2 == 1 { spacing_x * 0.5 } else { 0.0 };
+            // Pointy-top axial layout: each row is cumulatively shifted
+            // half a hex further right, so axial neighbor deltas
+            // (SE = (0, +1), SW = (-1, +1), …) match the rendered geometry.
+            let row_shift = (r as f32) * spacing_x * 0.5;
             let cx = maze_top_left.x + (q as f32) * spacing_x + row_shift + spacing_x * 0.5;
             let cy = maze_top_left.y + (r as f32) * spacing_y + radius;
-
-            let angles: [f32; 6] = [
-                std::f32::consts::FRAC_PI_6,
-                std::f32::consts::FRAC_PI_6 * 3.0,
-                std::f32::consts::FRAC_PI_6 * 5.0,
-                std::f32::consts::FRAC_PI_6 * 7.0,
-                std::f32::consts::FRAC_PI_6 * 9.0,
-                std::f32::consts::FRAC_PI_6 * 11.0,
-            ];
 
             let vertices: [egui::Pos2; 6] = angles.map(|angle| {
                 egui::pos2(
@@ -978,36 +1016,68 @@ fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
                 )
             });
 
-            let fill_color = if (q + r) % 2 == 0 {
-                Color32::from_rgb(240, 240, 240)
-            } else {
-                Color32::from_rgb(220, 220, 220)
-            };
+            let shade_idx = (q as isize - r as isize).rem_euclid(3) as usize;
+            let fill_color = fill_shades[shade_idx];
 
-            let hex_points = vec![
-                vertices[0],
-                vertices[1],
-                vertices[2],
-                vertices[3],
-                vertices[4],
-                vertices[5],
-            ];
-            painter.add(egui::Shape::convex_polygon(
-                hex_points,
-                fill_color,
-                egui::Stroke::NONE,
-            ));
+            let base = fill_mesh.vertices.len() as u32;
+            // Center vertex.
+            fill_mesh.vertices.push(egui::epaint::Vertex {
+                pos: egui::pos2(cx, cy),
+                uv: egui::epaint::WHITE_UV,
+                color: fill_color,
+            });
+            // 6 perimeter vertices at snapped positions so neighboring
+            // cells' shared edges line up pixel-exactly.
+            for v in &vertices {
+                fill_mesh.vertices.push(egui::epaint::Vertex {
+                    pos: snap(*v),
+                    uv: egui::epaint::WHITE_UV,
+                    color: fill_color,
+                });
+            }
 
-            let wall_dirs = [
-                Direction6::EAST,
-                Direction6::SE,
-                Direction6::SW,
-                Direction6::WEST,
-                Direction6::NW,
-                Direction6::NE,
-            ];
+            let center_idx = base;
+            for i in 0..6u32 {
+                fill_mesh.indices.push(center_idx);
+                fill_mesh.indices.push(base + 1 + i);
+                fill_mesh.indices.push(base + 1 + ((i + 1) % 6));
+            }
 
-            let edges = [(0usize, 1usize), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
+            cell_vertices.push(vertices);
+        }
+    }
+
+    painter.add(egui::Shape::Mesh(fill_mesh.into()));
+
+    // Second pass: walls on top.
+    let wall_dirs = [
+        Direction6::EAST,
+        Direction6::SE,
+        Direction6::SW,
+        Direction6::WEST,
+        Direction6::NW,
+        Direction6::NE,
+    ];
+    // Vertex indices are ordered clockwise starting at 30° (lower-right) in
+    // egui's y-down screen space:
+    //   0 = lower-right, 1 = bottom,      2 = lower-left,
+    //   3 = upper-left,  4 = top,         5 = upper-right.
+    // Each entry is the vertex pair forming the edge of the matching wall in
+    // `wall_dirs`.
+    let edges = [
+        (5usize, 0usize), // EAST  – right vertical edge
+        (0, 1),           // SE    – lower-right slanted edge
+        (1, 2),           // SW    – lower-left slanted edge
+        (2, 3),           // WEST  – left vertical edge
+        (3, 4),           // NW    – upper-left slanted edge
+        (4, 5),           // NE    – upper-right slanted edge
+    ];
+
+    for r in 0..maze.height() {
+        for q in 0..maze.width() {
+            let coord = HexCoord::new(q as isize, r as isize);
+            let wall = maze.get(coord).expect("coord in bounds");
+            let vertices = &cell_vertices[r * maze.width() + q];
 
             for (i, &dir) in wall_dirs.iter().enumerate() {
                 if wall.contains(dir) {
