@@ -48,7 +48,7 @@ impl From<&Wall4Grid> for AdjacencyList {
         let mut neighbors = vec![Vec::with_capacity(4); value.width() * value.height()];
 
         for cell in value.coords() {
-            neighbors[value.linearize_coords(cell)] = value.open_neighbors(cell);
+            neighbors[value.linearize_coords(cell)] = value.open_neighbors(cell).collect();
         }
 
         Self {
@@ -70,7 +70,10 @@ mod tests {
         let adjacency = AdjacencyList::from(&maze);
 
         for coord in maze.coords() {
-            assert_eq!(adjacency.neighbors(coord), maze.open_neighbors(coord));
+            assert_eq!(
+                adjacency.neighbors(coord),
+                maze.open_neighbors(coord).collect::<Vec<_>>()
+            );
         }
     }
 

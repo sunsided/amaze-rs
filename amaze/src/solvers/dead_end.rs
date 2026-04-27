@@ -15,7 +15,7 @@ impl MazeSolver for DeadEndFillingSolver {
 
         let mut degree = vec![0usize; maze.width() * maze.height()];
         for cell in maze.coords() {
-            degree[maze.linearize_coords(cell)] = maze.open_neighbors(cell).len();
+            degree[maze.linearize_coords(cell)] = maze.open_neighbors(cell).count();
         }
 
         let mut removed: HashSet<GridCoord2D> = HashSet::new();
@@ -53,7 +53,6 @@ impl MazeSolver for DeadEndFillingSolver {
         while current != end {
             let mut next_options = maze
                 .open_neighbors(current)
-                .into_iter()
                 .filter(|n| Some(*n) != prev)
                 .filter(|n| !removed.contains(n) || *n == end)
                 .collect::<Vec<_>>();

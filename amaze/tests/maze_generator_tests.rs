@@ -6,7 +6,7 @@
 #![cfg(feature = "representations")]
 
 use amaze::generators::{
-    BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
+    BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, Prim4,
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::{GridCoord2D, Wall4Grid};
@@ -78,6 +78,7 @@ fn all_generators_produce_spanning_trees() {
     grids.push(<HuntAndKill4 as MazeGenerator2D>::new_from_seed(42).generate(size.0, size.1));
     grids.push(<Sidewinder4 as MazeGenerator2D>::new_from_seed(42).generate(size.0, size.1));
     grids.push(<BinaryTree4 as MazeGenerator2D>::new_from_seed(42).generate(size.0, size.1));
+    grids.push(<Prim4 as MazeGenerator2D>::new_from_seed(42).generate(size.0, size.1));
 
     for grid in grids {
         assert_connected_tree(&grid);
@@ -155,5 +156,12 @@ fn sidewinder_produces_valid_trees() {
 #[test]
 fn binary_tree_produces_valid_trees() {
     let maze = <BinaryTree4 as MazeGenerator2D>::new_from_seed(258).generate(10, 10);
+    assert_connected_tree(&maze);
+}
+
+/// Test that Prim produces spanning trees
+#[test]
+fn prim_produces_valid_trees() {
+    let maze = <Prim4 as MazeGenerator2D>::new_from_seed(369).generate(10, 10);
     assert_connected_tree(&maze);
 }

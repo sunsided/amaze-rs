@@ -249,7 +249,7 @@ mod tests {
 
         let directed_door_count: usize = maze
             .coords()
-            .map(|coord| maze.open_neighbors(coord).len())
+            .map(|coord| maze.open_neighbors(coord).count())
             .sum();
 
         assert_eq!(list.edges.len() * 2, directed_door_count);
@@ -352,7 +352,7 @@ mod petgraph_tests {
         let list = EdgeList::from(&maze);
 
         for coord in maze.coords() {
-            let expected: HashSet<_> = maze.open_neighbors(coord).into_iter().collect();
+            let expected: HashSet<_> = maze.open_neighbors(coord).collect();
             let actual: HashSet<_> = (&list).neighbors(coord).collect();
             assert_eq!(actual, expected);
         }
@@ -364,7 +364,7 @@ mod petgraph_tests {
         let list = EdgeList::from(&maze);
 
         for coord in maze.coords() {
-            let expected: HashSet<_> = maze.open_neighbors(coord).into_iter().collect();
+            let expected: HashSet<_> = maze.open_neighbors(coord).collect();
             let incident: Vec<_> = (&list).edges(coord).collect();
             let actual: HashSet<_> = incident.iter().map(|edge| edge.target()).collect();
 

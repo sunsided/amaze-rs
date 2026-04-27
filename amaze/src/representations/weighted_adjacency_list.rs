@@ -20,7 +20,6 @@ impl WeightedAdjacencyList {
         for from in value.coords() {
             let weighted_neighbors = value
                 .open_neighbors(from)
-                .into_iter()
                 .map(|to| (to, weight_fn(from, to)))
                 .collect();
 

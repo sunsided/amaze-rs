@@ -23,6 +23,7 @@ generators = [
     "generator-hunt-and-kill",
     "generator-sidewinder",
     "generator-binary-tree",
+    "generator-prim",
 ]
 generator-growing-tree = []
 generator-kruskal = []
@@ -31,6 +32,7 @@ generator-wilson = []
 generator-hunt-and-kill = []
 generator-sidewinder = []
 generator-binary-tree = []
+generator-prim = []
 
 solvers = ["solver-bfs", "solver-dfs", "solver-astar", "solver-dead-end"]
 solver-bfs = []
@@ -56,4 +58,13 @@ criterion.workspace = true
 
 [[bench]]
 name = "generation"
+harness = false
+
+[[bench]]
+name = "solvers"
+harness = false
+required-features = ["solvers"]
+
+[[bench]]
+name = "stats"
 harness = false

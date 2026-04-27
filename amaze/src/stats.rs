@@ -12,13 +12,13 @@ pub struct MazeStats {
 }
 
 impl MazeStats {
-    pub(crate) fn from_grid(grid: &Wall4Grid) -> Self {
+    pub fn from_grid(grid: &Wall4Grid) -> Self {
         let mut dead_ends = 0usize;
         let mut corridors = 0usize;
         let mut junctions = 0usize;
 
         for cell in grid.coords() {
-            let degree = grid.open_neighbors(cell).len();
+            let degree = grid.open_neighbors(cell).count();
             match degree {
                 0 | 1 => dead_ends += 1,
                 2 => corridors += 1,

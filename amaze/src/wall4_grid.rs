@@ -101,33 +101,35 @@ impl Wall4Grid {
         out.into_iter().flatten()
     }
 
-    pub fn open_neighbors(&self, cell: GridCoord2D) -> Vec<GridCoord2D> {
-        let Some(walls) = self.get(cell) else {
-            return Vec::new();
-        };
-
-        let mut out = Vec::with_capacity(4);
-        if !walls.contains(Direction4::NORTH) {
-            if let Some(n) = cell.up().filter(|c| c.y < self.height) {
-                out.push(n);
+    pub fn open_neighbors(&self, cell: GridCoord2D) -> impl Iterator<Item = GridCoord2D> + '_ {
+        let mut out = [None, None, None, None];
+        let mut n = 0;
+        if let Some(walls) = self.get(cell) {
+            if !walls.contains(Direction4::NORTH) {
+                if let Some(c) = cell.up().filter(|c| c.y < self.height) {
+                    out[n] = Some(c);
+                    n += 1;
+                }
+            }
+            if !walls.contains(Direction4::EAST) {
+                if let Some(c) = cell.right().filter(|c| c.x < self.width) {
+                    out[n] = Some(c);
+                    n += 1;
+                }
+            }
+            if !walls.contains(Direction4::SOUTH) {
+                if let Some(c) = cell.down().filter(|c| c.y < self.height) {
+                    out[n] = Some(c);
+                    n += 1;
+                }
+            }
+            if !walls.contains(Direction4::WEST) {
+                if let Some(c) = cell.left().filter(|c| c.x < self.width) {
+                    out[n] = Some(c);
+                }
             }
         }
-        if !walls.contains(Direction4::EAST) {
-            if let Some(e) = cell.right().filter(|c| c.x < self.width) {
-                out.push(e);
-            }
-        }
-        if !walls.contains(Direction4::SOUTH) {
-            if let Some(s) = cell.down().filter(|c| c.y < self.height) {
-                out.push(s);
-            }
-        }
-        if !walls.contains(Direction4::WEST) {
-            if let Some(w) = cell.left().filter(|c| c.x < self.width) {
-                out.push(w);
-            }
-        }
-        out
+        out.into_iter().flatten()
     }
 
     pub fn to_room_list<Tag, F>(&self, tag_fn: F) -> Room4List<Tag>

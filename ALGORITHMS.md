@@ -12,6 +12,7 @@ This document summarizes generation and solving algorithms shipped in `amaze`.
 - `HuntAndKill4`: walk until dead end, then hunt next viable seed.
 - `Sidewinder4`: fast horizontal runs with periodic northward links.
 - `BinaryTree4`: very fast directional-bias algorithm.
+- `Prim4`: randomized Prim's algorithm with many short corridors and branches.
 
 ## Dungeon Generators
 

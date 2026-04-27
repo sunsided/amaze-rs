@@ -12,7 +12,7 @@ pub mod room4;
 pub mod room4_list;
 #[cfg(feature = "solvers")]
 pub mod solvers;
-mod stats;
+pub mod stats;
 mod visit_map_2d;
 mod wall4_grid;
 

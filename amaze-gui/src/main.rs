@@ -1,7 +1,7 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType, solve_bfs};
 use amaze::generators::{
     BinaryTree4, Eller4, GenerationStep, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
-    RecursiveBacktracker4, Sidewinder4, Wilson4,
+    Prim4, RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::*;
 use eframe::{App, Frame, NativeOptions, egui, epaint::Color32};
@@ -23,6 +23,7 @@ enum AlgorithmChoice {
     HuntAndKill,
     Sidewinder,
     BinaryTree,
+    Prim,
 }
 
 impl AlgorithmChoice {
@@ -36,6 +37,7 @@ impl AlgorithmChoice {
             Self::HuntAndKill => "Hunt and Kill",
             Self::Sidewinder => "Sidewinder",
             Self::BinaryTree => "Binary Tree",
+            Self::Prim => "Prim",
         }
     }
 }
@@ -188,6 +190,11 @@ impl App for MyApp {
                             &mut self.algorithm,
                             AlgorithmChoice::BinaryTree,
                             AlgorithmChoice::BinaryTree.as_str(),
+                        );
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::Prim,
+                            AlgorithmChoice::Prim.as_str(),
                         );
                     });
 
@@ -420,6 +427,9 @@ fn generate_maze(algorithm: AlgorithmChoice, seed: u64, width: usize, height: us
         AlgorithmChoice::BinaryTree => {
             <BinaryTree4 as MazeGenerator2D>::new_from_seed(seed).generate(width, height)
         }
+        AlgorithmChoice::Prim => {
+            <Prim4 as MazeGenerator2D>::new_from_seed(seed).generate(width, height)
+        }
     }
 }
 
@@ -452,6 +462,9 @@ fn generate_steps(
             .generate_steps(width, height)
             .collect(),
         AlgorithmChoice::BinaryTree => <BinaryTree4 as MazeGenerator2D>::new_from_seed(seed)
+            .generate_steps(width, height)
+            .collect(),
+        AlgorithmChoice::Prim => <Prim4 as MazeGenerator2D>::new_from_seed(seed)
             .generate_steps(width, height)
             .collect(),
     }

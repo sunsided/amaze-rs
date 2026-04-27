@@ -1,6 +1,6 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType};
 use amaze::generators::{
-    BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, MixedCell,
+    BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, MixedCell, Prim4,
     RecursiveBacktracker4, Sidewinder4, Wilson4,
 };
 use amaze::preamble::*;
@@ -36,6 +36,7 @@ fn main() {
                             "hunt-and-kill",
                             "sidewinder",
                             "binary-tree",
+                            "prim",
                         ])
                         .action(ArgAction::Set),
                 )
@@ -201,6 +202,9 @@ fn main() {
                         .generate(*width, *height),
                     "binary-tree" => <BinaryTree4 as MazeGenerator2D>::new_from_seed(seed)
                         .generate(*width, *height),
+                    "prim" => {
+                        <Prim4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height)
+                    }
                     _ => unreachable!(),
                 };
             match style {
