@@ -180,7 +180,7 @@ mod tests {
     #[test]
     #[cfg(feature = "generator-hex-recursive-backtracker")]
     fn hex_json_roundtrip() {
-        use crate::generators::{MazeGenerator6D, RecursiveBacktracker6};
+        use crate::generators::RecursiveBacktracker6;
         let maze = RecursiveBacktracker6::new_from_seed(42).generate(5, 5);
         let json = maze.to_json().unwrap();
         let restored = Wall6Grid::from_json(&json).unwrap();

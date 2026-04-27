@@ -187,13 +187,13 @@ mod tests {
 
     #[test]
     fn too_short_returns_error() {
-        assert!(Wall4Grid::from_binary(&[b'A', b'M', b'Z', b'E']).is_err());
+        assert!(Wall4Grid::from_binary(b"AMZE").is_err());
     }
 
     #[test]
     #[cfg(feature = "generator-hex-recursive-backtracker")]
     fn hex_roundtrip() {
-        use crate::generators::{MazeGenerator6D, RecursiveBacktracker6};
+        use crate::generators::RecursiveBacktracker6;
         let maze = RecursiveBacktracker6::new_from_seed(42).generate(5, 5);
         let bytes = maze.to_binary().unwrap();
         let restored = Wall6Grid::from_binary(&bytes).unwrap();

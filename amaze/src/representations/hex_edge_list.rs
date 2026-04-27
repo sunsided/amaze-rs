@@ -242,7 +242,7 @@ impl petgraph::visit::Visitable for HexEdgeList {
 #[cfg(all(test, feature = "generator-hex-recursive-backtracker"))]
 mod tests {
     use super::*;
-    use crate::generators::{MazeGenerator6D, RecursiveBacktracker6};
+    use crate::generators::RecursiveBacktracker6;
     use std::collections::HashSet;
 
     fn make_hex_maze() -> Wall6Grid {
@@ -310,7 +310,7 @@ mod tests {
 ))]
 mod petgraph_tests {
     use super::*;
-    use crate::generators::{MazeGenerator6D, RecursiveBacktracker6};
+    use crate::generators::RecursiveBacktracker6;
     use petgraph::algo::astar;
     use petgraph::visit::{
         Bfs, EdgeCount, EdgeRef, IntoEdgeReferences, IntoEdges, IntoNeighbors, IntoNodeIdentifiers,

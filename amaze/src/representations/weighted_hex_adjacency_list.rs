@@ -63,7 +63,7 @@ impl From<&Wall6Grid> for WeightedHexAdjacencyList {
 #[cfg(all(test, feature = "generator-hex-recursive-backtracker"))]
 mod tests {
     use super::*;
-    use crate::generators::{MazeGenerator6D, RecursiveBacktracker6};
+    use crate::generators::RecursiveBacktracker6;
     use crate::representations::HexAdjacencyList;
 
     fn make_hex_maze() -> Wall6Grid {
