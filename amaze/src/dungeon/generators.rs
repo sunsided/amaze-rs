@@ -1,4 +1,4 @@
-use crate::dungeon::{DungeonGrid, DungeonType, TileType};
+use crate::dungeon::{DungeonGrid, DungeonType, DynDungeonGrid, TileType};
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
 use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
@@ -136,6 +136,12 @@ pub struct DungeonWalkGenerator {
     /// Maximum long walk distance (exclusive upper bound). Only used for Rooms/Winding types.
     /// Unity default: 18 (so range is 9..18, meaning 9-17 inclusive)
     long_walk_max: usize,
+    /// Enable dynamic grid resizing during generation
+    dynamic_resize: bool,
+    /// Initial grid size when dynamic resize is enabled (default 32)
+    initial_grid_size: usize,
+    /// Padding around final trimmed dungeon (default 0)
+    trim_padding: usize,
 }
 
 /// Helper struct to reduce parameter count in internal methods
@@ -148,6 +154,15 @@ struct WalkContext<'a, V> {
     last_floor: GridCoord2D,
 }
 
+/// Helper struct for dynamic grid generation
+struct DynWalkContext<'a, V> {
+    rng: &'a mut StdRng,
+    dyn_grid: &'a mut DynDungeonGrid,
+    visitor: &'a mut V,
+    last_floor_world: (isize, isize),
+    initial_size: usize,
+}
+
 impl DungeonWalkGenerator {
     /// Create a new generator of the specified type with a random seed.
     pub fn new_random(dungeon_type: DungeonType) -> Self {
@@ -157,6 +172,9 @@ impl DungeonWalkGenerator {
             winding_hall_probability: 50, // Default Unity value
             long_walk_min: 9,             // Default Unity value
             long_walk_max: 18,            // Default Unity value (exclusive upper bound)
+            dynamic_resize: false,
+            initial_grid_size: 32,
+            trim_padding: 0,
         }
     }
 
@@ -170,6 +188,9 @@ impl DungeonWalkGenerator {
             winding_hall_probability: 50,
             long_walk_min: 9,
             long_walk_max: 18,
+            dynamic_resize: false,
+            initial_grid_size: 32,
+            trim_padding: 0,
         }
     }
 
@@ -192,6 +213,28 @@ impl DungeonWalkGenerator {
         let max_exclusive = max_exclusive.max(min + 1); // At least min+1 to ensure valid range
         self.long_walk_min = min;
         self.long_walk_max = max_exclusive;
+        self
+    }
+
+    /// Enable or disable dynamic grid resizing during generation.
+    /// When enabled, the grid starts small and expands as the walker approaches boundaries.
+    /// The final grid is trimmed to the tight bounding box of content.
+    pub fn with_dynamic_resize(mut self, enabled: bool) -> Self {
+        self.dynamic_resize = enabled;
+        self
+    }
+
+    /// Set the initial grid size when dynamic resize is enabled.
+    /// The grid starts as a square of this size and expands as needed.
+    pub fn with_initial_grid_size(mut self, size: usize) -> Self {
+        self.initial_grid_size = size.max(8); // Minimum 8x8
+        self
+    }
+
+    /// Set the padding around the final trimmed dungeon.
+    /// This adds empty tiles around the content bounding box.
+    pub fn with_trim_padding(mut self, padding: usize) -> Self {
+        self.trim_padding = padding;
         self
     }
 
@@ -220,16 +263,40 @@ impl DungeonWalkGenerator {
         visitor: &mut V,
         emit_wall_steps: bool,
     ) -> DungeonGrid {
-        let mut grid = DungeonGrid::new(width, height);
         let mut rng = StdRng::seed_from_u64(self.rng_seed);
 
         if width == 0 || height == 0 || floor_count == 0 {
+            let grid = DungeonGrid::new(width, height);
             visitor.on_step(&DungeonGenerationStep::Complete);
             return grid;
         }
 
+        if self.dynamic_resize {
+            self.generate_dynamic(floor_count, visitor, emit_wall_steps, &mut rng)
+        } else {
+            self.generate_fixed(
+                width,
+                height,
+                floor_count,
+                visitor,
+                emit_wall_steps,
+                &mut rng,
+            )
+        }
+    }
+
+    fn generate_fixed<V: DungeonGenerationVisitor>(
+        &self,
+        width: usize,
+        height: usize,
+        floor_count: usize,
+        visitor: &mut V,
+        emit_wall_steps: bool,
+        rng: &mut StdRng,
+    ) -> DungeonGrid {
+        let mut grid = DungeonGrid::new(width, height);
+
         // Cap floor_count to max possible tiles (leaving some margin for walls)
-        // Use saturating_mul to prevent overflow on large dimensions
         let max_possible_floor = width.saturating_mul(height).saturating_mul(9) / 10; // 90% max
         let target_floor_count = floor_count.min(max_possible_floor);
 
@@ -243,8 +310,6 @@ impl DungeonWalkGenerator {
 
         // Track iterations to prevent infinite loops
         let mut iterations_since_progress = 0;
-        // Dynamic stall limit: scale with problem size
-        // Use target floor count as baseline, with minimum of 1000 and scaling by area
         let max_stalled_iterations = target_floor_count
             .max(width.saturating_mul(height) / 10)
             .max(1000);
@@ -254,14 +319,12 @@ impl DungeonWalkGenerator {
             let floor_count_before = grid.floor_count();
             iterations_since_progress += 1;
 
-            // Safety check: if we've been stuck for too long, exit
             if iterations_since_progress > max_stalled_iterations {
                 break;
             }
             match self.dungeon_type {
                 DungeonType::Caverns => {
-                    // Simple random walk
-                    walker_pos = self.take_step(&mut rng, walker_pos, width, height);
+                    walker_pos = self.take_step(rng, walker_pos, width, height);
                     if !grid.is_floor(walker_pos) {
                         grid.set(walker_pos, TileType::Floor);
                         visitor.on_step(&DungeonGenerationStep::PlaceFloor { coord: walker_pos });
@@ -269,9 +332,8 @@ impl DungeonWalkGenerator {
                     }
                 }
                 DungeonType::Rooms | DungeonType::Winding => {
-                    // Create context for helper methods
                     let mut ctx = WalkContext {
-                        rng: &mut rng,
+                        rng,
                         grid: &mut grid,
                         visitor,
                         width,
@@ -279,14 +341,11 @@ impl DungeonWalkGenerator {
                         last_floor: last_floor_pos,
                     };
 
-                    // Take a long walk
                     walker_pos = self.take_long_walk(&mut ctx, walker_pos, target_floor_count);
 
-                    // Maybe stamp a room
                     let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
                         true
                     } else {
-                        // Winding: probabilistic room suppression
                         let roll = ctx.rng.random_range(0..100);
                         roll > self.winding_hall_probability
                     };
@@ -295,20 +354,17 @@ impl DungeonWalkGenerator {
                         self.stamp_room(&mut ctx, walker_pos, target_floor_count);
                     }
 
-                    // Extract last_floor from context
                     last_floor_pos = ctx.last_floor;
                 }
             }
 
-            // Check if we made progress
             if grid.floor_count() > floor_count_before {
                 iterations_since_progress = 0;
             }
         }
 
-        // Post-processing: place walls
+        // Post-processing
         grid.place_walls();
-        // Emit wall placement events for animation (optional, can be batched)
         if emit_wall_steps {
             for y in 0..height {
                 for x in 0..width {
@@ -320,17 +376,145 @@ impl DungeonWalkGenerator {
             }
         }
 
-        // Set exit at last floor position
         grid.set_exit(last_floor_pos);
         visitor.on_step(&DungeonGenerationStep::SetExit {
             coord: last_floor_pos,
         });
 
-        // Compute edge masks for wall rendering
         grid.compute_edge_masks();
 
         visitor.on_step(&DungeonGenerationStep::Complete);
         grid
+    }
+
+    fn generate_dynamic<V: DungeonGenerationVisitor>(
+        &self,
+        floor_count: usize,
+        visitor: &mut V,
+        emit_wall_steps: bool,
+        rng: &mut StdRng,
+    ) -> DungeonGrid {
+        let initial_size = self.initial_grid_size;
+        let mut dyn_grid = DynDungeonGrid::new(initial_size, initial_size);
+
+        // Cap floor_count based on a reasonable maximum
+        let max_possible_floor = initial_size.saturating_mul(initial_size).saturating_mul(9) / 10;
+        let target_floor_count = floor_count.min(max_possible_floor.max(10000));
+
+        // Start at world position (0, 0)
+        let mut walker_world = (0isize, 0isize);
+        let mut last_floor_world = (0isize, 0isize);
+
+        // Place initial floor
+        dyn_grid.ensure_bounds(0, 0, 0, 0);
+        dyn_grid.set_world(0, 0, TileType::Floor);
+        dyn_grid.update_floor_bounds(0, 0);
+        visitor.on_step(&DungeonGenerationStep::PlaceFloor {
+            coord: GridCoord2D::new(initial_size / 2, initial_size / 2),
+        });
+
+        // Stall limit - use a larger default for dynamic mode
+        let mut iterations_since_progress = 0;
+        let max_stalled_iterations = target_floor_count.max(5000);
+
+        // Track floor count directly from dyn_grid
+        while dyn_grid.inner().floor_count() < target_floor_count {
+            let floor_count_before = dyn_grid.inner().floor_count();
+            iterations_since_progress += 1;
+
+            if iterations_since_progress > max_stalled_iterations {
+                break;
+            }
+
+            match self.dungeon_type {
+                DungeonType::Caverns => {
+                    walker_world = self.take_step_world(rng, walker_world);
+                    // Ensure bounds before setting
+                    dyn_grid.ensure_bounds(
+                        walker_world.0,
+                        walker_world.1,
+                        walker_world.0,
+                        walker_world.1,
+                    );
+                    if !dyn_grid.is_floor_world(walker_world.0, walker_world.1) {
+                        dyn_grid.set_world(walker_world.0, walker_world.1, TileType::Floor);
+                        dyn_grid.update_floor_bounds(walker_world.0, walker_world.1);
+                        // Emit event with a synthetic grid coord (center-based)
+                        visitor.on_step(&DungeonGenerationStep::PlaceFloor {
+                            coord: GridCoord2D::new(initial_size / 2, initial_size / 2),
+                        });
+                        last_floor_world = walker_world;
+                    }
+                }
+                DungeonType::Rooms | DungeonType::Winding => {
+                    let mut ctx = DynWalkContext {
+                        rng,
+                        dyn_grid: &mut dyn_grid,
+                        visitor,
+                        last_floor_world,
+                        initial_size,
+                    };
+
+                    walker_world =
+                        self.take_long_walk_world(&mut ctx, walker_world, target_floor_count);
+
+                    let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
+                        true
+                    } else {
+                        let roll = ctx.rng.random_range(0..100);
+                        roll > self.winding_hall_probability
+                    };
+
+                    if should_stamp_room && ctx.dyn_grid.inner().floor_count() < target_floor_count
+                    {
+                        self.stamp_room_world(&mut ctx, walker_world, target_floor_count);
+                    }
+
+                    last_floor_world = ctx.last_floor_world;
+                }
+            }
+
+            if dyn_grid.inner().floor_count() > floor_count_before {
+                iterations_since_progress = 0;
+            }
+        }
+
+        // Set exit world position
+        dyn_grid.set_exit_world(last_floor_world.0, last_floor_world.1);
+        visitor.on_step(&DungeonGenerationStep::SetExit {
+            coord: GridCoord2D::new(initial_size / 2, initial_size / 2),
+        });
+
+        // Finalize: trim to content bounds with padding
+        let final_grid = dyn_grid.finalize(self.trim_padding);
+
+        // Emit wall steps if needed (from final grid)
+        if emit_wall_steps {
+            for y in 0..final_grid.height() {
+                for x in 0..final_grid.width() {
+                    let coord = GridCoord2D::new(x, y);
+                    if final_grid.get(coord).unwrap().is_wall() {
+                        visitor.on_step(&DungeonGenerationStep::PlaceWall { coord });
+                    }
+                }
+            }
+        }
+
+        visitor.on_step(&DungeonGenerationStep::Complete);
+        final_grid
+    }
+
+    /// Take a single random step in world coordinates (no clamping).
+    fn take_step_world(&self, rng: &mut StdRng, pos: (isize, isize)) -> (isize, isize) {
+        let directions: [(isize, isize); 4] = [
+            (0, -1), // up
+            (1, 0),  // right
+            (0, 1),  // down
+            (-1, 0), // left
+        ];
+
+        let &(dx, dy) = directions.choose(rng).unwrap();
+        (pos.0 + dx, pos.1 + dy)
     }
 
     /// Take a single random step in one of 4 directions, staying in bounds.
@@ -439,6 +623,90 @@ impl DungeonWalkGenerator {
             }
         }
     }
+
+    /// Take a long walk in world coordinates (no clamping, expands grid as needed).
+    fn take_long_walk_world<V: DungeonGenerationVisitor>(
+        &self,
+        ctx: &mut DynWalkContext<V>,
+        start: (isize, isize),
+        target_floor_count: usize,
+    ) -> (isize, isize) {
+        let walk_length = ctx.rng.random_range(self.long_walk_min..self.long_walk_max);
+
+        let directions: [(isize, isize); 4] = [
+            (0, -1), // up
+            (1, 0),  // right
+            (0, 1),  // down
+            (-1, 0), // left
+        ];
+        let &(dx, dy) = directions.choose(ctx.rng).unwrap();
+
+        let mut pos = start;
+
+        for _ in 0..walk_length {
+            if ctx.dyn_grid.inner().floor_count() >= target_floor_count {
+                break;
+            }
+
+            pos = (pos.0 + dx, pos.1 + dy);
+
+            // Ensure grid has space
+            ctx.dyn_grid.ensure_bounds(pos.0, pos.1, pos.0, pos.1);
+
+            if !ctx.dyn_grid.is_floor_world(pos.0, pos.1) {
+                ctx.dyn_grid.set_world(pos.0, pos.1, TileType::Floor);
+                ctx.dyn_grid.update_floor_bounds(pos.0, pos.1);
+                ctx.visitor.on_step(&DungeonGenerationStep::PlaceFloor {
+                    coord: GridCoord2D::new(ctx.initial_size / 2, ctx.initial_size / 2),
+                });
+                ctx.last_floor_world = pos;
+            }
+        }
+
+        pos
+    }
+
+    /// Stamp a rectangular room in world coordinates.
+    fn stamp_room_world<V: DungeonGenerationVisitor>(
+        &self,
+        ctx: &mut DynWalkContext<V>,
+        center: (isize, isize),
+        target_floor_count: usize,
+    ) {
+        let half_width = ctx.rng.random_range(1..5);
+        let half_height = ctx.rng.random_range(1..5);
+
+        ctx.visitor.on_step(&DungeonGenerationStep::StampRoom {
+            center: GridCoord2D::new(ctx.initial_size / 2, ctx.initial_size / 2),
+            half_width,
+            half_height,
+        });
+
+        let min_x = center.0 - half_width as isize;
+        let max_x = center.0 + half_width as isize;
+        let min_y = center.1 - half_height as isize;
+        let max_y = center.1 + half_height as isize;
+
+        // Ensure bounds for the entire room
+        ctx.dyn_grid.ensure_bounds(min_x, min_y, max_x, max_y);
+
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                if ctx.dyn_grid.inner().floor_count() >= target_floor_count {
+                    return;
+                }
+
+                if !ctx.dyn_grid.is_floor_world(x, y) {
+                    ctx.dyn_grid.set_world(x, y, TileType::Floor);
+                    ctx.dyn_grid.update_floor_bounds(x, y);
+                    ctx.visitor.on_step(&DungeonGenerationStep::PlaceFloor {
+                        coord: GridCoord2D::new(ctx.initial_size / 2, ctx.initial_size / 2),
+                    });
+                    ctx.last_floor_world = (x, y);
+                }
+            }
+        }
+    }
 }
 
 impl DungeonGenerator for DungeonWalkGenerator {
@@ -465,5 +733,80 @@ impl DungeonGenerator for DungeonWalkGenerator {
 
     fn dungeon_type(&self) -> DungeonType {
         self.dungeon_type
+    }
+}
+
+#[cfg(test)]
+mod generator_tests {
+    use super::*;
+
+    #[test]
+    fn test_generator_dynamic_produces_tight_grid() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Caverns)
+            .with_dynamic_resize(true)
+            .with_initial_grid_size(32)
+            .with_trim_padding(0);
+
+        // Request more floors than the initial 32x32 grid can hold at center
+        let grid = generator.generate(40, 30, 500);
+
+        // The grid should be trimmed to fit the content tightly
+        // With 500 floors, the grid should be reasonably sized
+        assert!(grid.width() <= 100);
+        assert!(grid.height() <= 100);
+        assert!(grid.floor_count() > 0);
+    }
+
+    #[test]
+    fn test_generator_dynamic_with_padding() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Caverns)
+            .with_dynamic_resize(true)
+            .with_initial_grid_size(32)
+            .with_trim_padding(2);
+
+        let grid = generator.generate(40, 30, 100);
+
+        assert!(grid.width() > 0);
+        assert!(grid.height() > 0);
+        assert!(grid.floor_count() > 0);
+    }
+
+    #[test]
+    fn test_generator_fixed_mode_unchanged() {
+        let generator =
+            DungeonWalkGenerator::new_random(DungeonType::Caverns).with_dynamic_resize(false);
+
+        let grid = generator.generate(40, 30, 200);
+
+        // Fixed mode should produce exactly the requested dimensions
+        assert_eq!(grid.width(), 40);
+        assert_eq!(grid.height(), 30);
+    }
+
+    #[test]
+    fn test_generator_dynamic_rooms_type() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Rooms)
+            .with_dynamic_resize(true)
+            .with_initial_grid_size(32);
+
+        let grid = generator.generate(40, 30, 300);
+
+        assert!(grid.floor_count() > 0);
+        assert!(grid.width() > 0);
+        assert!(grid.height() > 0);
+    }
+
+    #[test]
+    fn test_generator_dynamic_winding_type() {
+        let generator = DungeonWalkGenerator::new_random(DungeonType::Winding)
+            .with_dynamic_resize(true)
+            .with_initial_grid_size(32)
+            .with_winding_probability(50);
+
+        let grid = generator.generate(40, 30, 300);
+
+        assert!(grid.floor_count() > 0);
+        assert!(grid.width() > 0);
+        assert!(grid.height() > 0);
     }
 }

@@ -6,6 +6,7 @@
 
 mod dungeon_grid;
 mod dungeon_type;
+mod dyn_dungeon_grid;
 pub mod generators;
 #[cfg(all(feature = "representations", feature = "solvers"))]
 pub mod solvers;
@@ -13,6 +14,7 @@ mod tile_type;
 
 pub use dungeon_grid::DungeonGrid;
 pub use dungeon_type::DungeonType;
+pub use dyn_dungeon_grid::DynDungeonGrid;
 pub use generators::{
     DungeonGenerationStep, DungeonGenerationSteps, DungeonGenerationVisitor, DungeonGenerator,
     DungeonWalkGenerator, VecDungeonGenerationVisitor,

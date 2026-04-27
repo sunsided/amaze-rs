@@ -22,7 +22,7 @@ A playground for maze and procedural dungeon generation.
 Example GUI usage (default style, seed, and size):
 
 ```bash
-just show-gui
+task example:gui
 ```
 
 The GUI supports:
@@ -37,7 +37,7 @@ The GUI supports:
 Example CLI usage (default style, seed, and size):
 
 ```bash
-just show-example
+task example:cli
 ```
 
 Example output:
@@ -64,7 +64,7 @@ Example output:
 Alternatively, you can generate a PPM image using:
 
 ```bash
-just show-example-ppm
+task example:ppm
 ```
 
 ### CLI - Dungeons

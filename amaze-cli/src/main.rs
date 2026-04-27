@@ -161,6 +161,31 @@ fn main() {
                         .default_value("18")
                         .value_parser(value_parser!(usize))
                         .action(ArgAction::Set),
+                )
+                .arg(
+                    Arg::new("dynamic")
+                        .long("dynamic")
+                        .help("enable dynamic grid resizing (starts small, expands as needed)")
+                        .display_order(8)
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("initial-size")
+                        .long("initial-size")
+                        .help("initial grid size when dynamic resize is enabled")
+                        .display_order(9)
+                        .default_value("32")
+                        .value_parser(value_parser!(usize))
+                        .action(ArgAction::Set),
+                )
+                .arg(
+                    Arg::new("trim-padding")
+                        .long("trim-padding")
+                        .help("padding around final trimmed dungeon")
+                        .display_order(10)
+                        .default_value("0")
+                        .value_parser(value_parser!(usize))
+                        .action(ArgAction::Set),
                 ),
         )
         .get_matches();
@@ -333,6 +358,17 @@ fn main() {
             let dungeon = DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
                 .with_winding_probability(winding_probability)
                 .with_long_walk_range(long_walk_min, long_walk_max)
+                .with_dynamic_resize(*dungeon_matches.get_one::<bool>("dynamic").unwrap_or(&false))
+                .with_initial_grid_size(
+                    *dungeon_matches
+                        .get_one::<usize>("initial-size")
+                        .unwrap_or(&32),
+                )
+                .with_trim_padding(
+                    *dungeon_matches
+                        .get_one::<usize>("trim-padding")
+                        .unwrap_or(&0),
+                )
                 .generate(width, height, floor_count);
 
             println!("{}", render_dungeon(&dungeon));
