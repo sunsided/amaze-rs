@@ -1,5 +1,5 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType};
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
 use amaze::generators::{
     BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, MixedCell, Prim4,
@@ -179,7 +179,7 @@ fn main() {
                 .get_one::<RenderStyle>("style")
                 .unwrap_or(&default_style);
 
-            #[cfg(not(feature = "generator-hex"))]
+            #[cfg(not(feature = "generators-hex"))]
             let grid =
                 match algorithm.as_str() {
                     "recursive-backtracker" => {
@@ -215,7 +215,7 @@ fn main() {
                     _ => unreachable!(),
                 };
 
-            #[cfg(not(feature = "generator-hex"))]
+            #[cfg(not(feature = "generators-hex"))]
             match style {
                 RenderStyle::Unicode(style) => {
                     let renderer = UnicodeRenderer::new(*style, true);
@@ -227,7 +227,7 @@ fn main() {
                 }
             }
 
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             match algorithm.as_str() {
                 "recursive-backtracker" => {
                     let grid = RecursiveBacktracker4::new_from_seed(seed).generate(*width, *height);
@@ -369,7 +369,7 @@ fn render_dungeon(dungeon: &DungeonGrid) -> String {
     output
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn render_grid(grid: &Wall4Grid, style: &RenderStyle) {
     match style {
         RenderStyle::Unicode(style) => {
@@ -383,7 +383,7 @@ fn render_grid(grid: &Wall4Grid, style: &RenderStyle) {
     }
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn render_hex_grid(grid: &Wall6Grid) {
     let mut output = String::new();
     for r in 0..grid.height() {

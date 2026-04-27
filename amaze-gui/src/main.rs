@@ -1,5 +1,5 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType, solve_bfs};
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::generators::{
     AldousBroder6, GrowingTree6, HexGenerationStep, MazeGenerator6D, RecursiveBacktracker6,
 };
@@ -28,11 +28,11 @@ enum AlgorithmChoice {
     Sidewinder,
     BinaryTree,
     Prim,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     RecursiveBacktracker6,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     GrowingTree6,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     AldousBroder6,
 }
 
@@ -48,18 +48,18 @@ impl AlgorithmChoice {
             Self::Sidewinder => "Sidewinder",
             Self::BinaryTree => "Binary Tree",
             Self::Prim => "Prim",
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             Self::RecursiveBacktracker6 => "Hex Recursive Backtracker",
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             Self::GrowingTree6 => "Hex Growing Tree",
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             Self::AldousBroder6 => "Hex Aldous-Broder",
         }
     }
 
     fn is_hex(self) -> bool {
         match self {
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             Self::RecursiveBacktracker6 | Self::GrowingTree6 | Self::AldousBroder6 => true,
             _ => false,
         }
@@ -74,7 +74,7 @@ struct MyApp {
     height: usize,
     algorithm: AlgorithmChoice,
     maze: Mutex<Wall4Grid>,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     hex_maze: Mutex<Option<Wall6Grid>>,
     dungeon: Mutex<DungeonGrid>,
     dungeon_type: DungeonType,
@@ -89,12 +89,12 @@ struct MyApp {
     prev_available_size: Option<egui::Vec2>,
     start_cell: Option<GridCoord2D>,
     end_cell: Option<GridCoord2D>,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     hex_start_cell: Option<HexCoord>,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     hex_end_cell: Option<HexCoord>,
     animation_steps: Vec<GenerationStep>,
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     hex_animation_steps: Vec<HexGenerationStep>,
     animation_index: usize,
     is_animating: bool,
@@ -121,7 +121,7 @@ impl Default for MyApp {
             height: initial_height,
             algorithm,
             maze: Mutex::new(maze),
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             hex_maze: Mutex::new(None),
             dungeon: Mutex::new(dungeon),
             dungeon_type: DungeonType::Rooms,
@@ -136,12 +136,12 @@ impl Default for MyApp {
             prev_available_size: None,
             start_cell: None,
             end_cell: None,
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             hex_start_cell: None,
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             hex_end_cell: None,
             animation_steps: Vec::new(),
-            #[cfg(feature = "generator-hex")]
+            #[cfg(feature = "generators-hex")]
             hex_animation_steps: Vec::new(),
             animation_index: 0,
             is_animating: false,
@@ -176,7 +176,7 @@ impl App for MyApp {
                 self.auto_fit_pending = true;
                 self.start_cell = None;
                 self.end_cell = None;
-                #[cfg(feature = "generator-hex")]
+                #[cfg(feature = "generators-hex")]
                 {
                     self.hex_start_cell = None;
                     self.hex_end_cell = None;
@@ -241,19 +241,19 @@ impl App for MyApp {
                             AlgorithmChoice::Prim,
                             AlgorithmChoice::Prim.as_str(),
                         );
-                        #[cfg(feature = "generator-hex")]
+                        #[cfg(feature = "generators-hex")]
                         ui.selectable_value(
                             &mut self.algorithm,
                             AlgorithmChoice::RecursiveBacktracker6,
                             AlgorithmChoice::RecursiveBacktracker6.as_str(),
                         );
-                        #[cfg(feature = "generator-hex")]
+                        #[cfg(feature = "generators-hex")]
                         ui.selectable_value(
                             &mut self.algorithm,
                             AlgorithmChoice::GrowingTree6,
                             AlgorithmChoice::GrowingTree6.as_str(),
                         );
-                        #[cfg(feature = "generator-hex")]
+                        #[cfg(feature = "generators-hex")]
                         ui.selectable_value(
                             &mut self.algorithm,
                             AlgorithmChoice::AldousBroder6,
@@ -412,7 +412,7 @@ impl App for MyApp {
 
             ui.separator();
             if self.mode == Mode::Maze && ui.button("Animate Generation").clicked() {
-                #[cfg(feature = "generator-hex")]
+                #[cfg(feature = "generators-hex")]
                 if self.algorithm.is_hex() {
                     self.hex_animation_steps =
                         generate_hex_steps(self.algorithm, self.seed, self.width, self.height);
@@ -429,7 +429,7 @@ impl App for MyApp {
                     let mut lock = self.maze.lock().unwrap();
                     *lock = Wall4Grid::new(self.width, self.height);
                 }
-                #[cfg(not(feature = "generator-hex"))]
+                #[cfg(not(feature = "generators-hex"))]
                 {
                     self.animation_steps =
                         generate_steps(self.algorithm, self.seed, self.width, self.height);
@@ -445,7 +445,7 @@ impl App for MyApp {
                 self.pan = egui::Vec2::new(0.0, 0.0);
                 self.start_cell = None;
                 self.end_cell = None;
-                #[cfg(feature = "generator-hex")]
+                #[cfg(feature = "generators-hex")]
                 {
                     self.hex_start_cell = None;
                     self.hex_end_cell = None;
@@ -479,13 +479,13 @@ impl App for MyApp {
             ui.separator();
 
             if self.mode == Mode::Maze {
-                #[cfg(feature = "generator-hex")]
+                #[cfg(feature = "generators-hex")]
                 if self.algorithm.is_hex() {
                     render_hex_maze(ui, self, &ctx);
                 } else {
                     render_maze(ui, self, &ctx);
                 }
-                #[cfg(not(feature = "generator-hex"))]
+                #[cfg(not(feature = "generators-hex"))]
                 render_maze(ui, self, &ctx);
             } else {
                 render_dungeon(ui, self, &ctx);
@@ -525,7 +525,7 @@ fn generate_maze(algorithm: AlgorithmChoice, seed: u64, width: usize, height: us
         AlgorithmChoice::Prim => {
             <Prim4 as MazeGenerator2D>::new_from_seed(seed).generate(width, height)
         }
-        #[cfg(feature = "generator-hex")]
+        #[cfg(feature = "generators-hex")]
         AlgorithmChoice::RecursiveBacktracker6
         | AlgorithmChoice::GrowingTree6
         | AlgorithmChoice::AldousBroder6 => Wall4Grid::new(width, height),
@@ -566,7 +566,7 @@ fn generate_steps(
         AlgorithmChoice::Prim => <Prim4 as MazeGenerator2D>::new_from_seed(seed)
             .generate_steps(width, height)
             .collect(),
-        #[cfg(feature = "generator-hex")]
+        #[cfg(feature = "generators-hex")]
         AlgorithmChoice::RecursiveBacktracker6
         | AlgorithmChoice::GrowingTree6
         | AlgorithmChoice::AldousBroder6 => {
@@ -575,7 +575,7 @@ fn generate_steps(
     }
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn generate_hex_steps(
     algorithm: AlgorithmChoice,
     seed: u64,
@@ -599,19 +599,19 @@ fn generate_hex_steps(
 fn regenerate_maze(app: &mut MyApp) {
     app.is_animating = false;
     app.animation_steps.clear();
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     app.hex_animation_steps.clear();
     app.animation_index = 0;
     app.start_cell = None;
     app.end_cell = None;
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     {
         app.hex_start_cell = None;
         app.hex_end_cell = None;
     }
     app.auto_fit_pending = true;
 
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     if app.algorithm.is_hex() {
         let grid = generate_hex_maze(app.algorithm, app.seed, app.width, app.height);
         let mut lock = app.hex_maze.lock().unwrap();
@@ -623,7 +623,7 @@ fn regenerate_maze(app: &mut MyApp) {
     *lock = generate_maze(app.algorithm, app.seed, app.width, app.height);
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn generate_hex_maze(
     algorithm: AlgorithmChoice,
     seed: u64,
@@ -927,7 +927,7 @@ fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
     fit_w.min(fit_h).clamp(0.1, 5.0)
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn bfs_hex_solve(
     maze: &Wall6Grid,
     start: HexCoord,
@@ -965,7 +965,7 @@ fn bfs_hex_solve(
     None
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
     let hex_maze = app.hex_maze.lock().unwrap();
     let Some(maze) = hex_maze.as_ref() else {
@@ -1242,7 +1242,7 @@ fn tick_animation(app: &mut MyApp) {
         return;
     }
 
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     if !app.hex_animation_steps.is_empty() {
         let mut lock = app.hex_maze.lock().unwrap();
         let Some(maze) = lock.as_mut() else {

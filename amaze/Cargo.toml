@@ -34,7 +34,7 @@ generator-sidewinder = []
 generator-binary-tree = []
 generator-prim = []
 
-generator-hex = [
+generators-hex= [
     "generator-hex-recursive-backtracker",
     "generator-hex-growing-tree",
     "generator-hex-aldous-broder",
@@ -53,6 +53,11 @@ renderers = ["unicode-renderer", "pgm-renderer"]
 unicode-renderer = []
 pgm-renderer = []
 representations = []
+hex-representations = ["representations"]
+dungeon-representations = ["representations"]
+binary-format = []
+json-format = ["dep:serde_json", "dep:serde"]
+file-io = ["binary-format", "json-format"]
 petgraph = ["dep:petgraph", "representations"]
 serde = ["dep:serde"]
 
@@ -60,6 +65,7 @@ serde = ["dep:serde"]
 rand.workspace = true
 serde = { workspace = true, optional = true }
 petgraph = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 indoc.workspace = true

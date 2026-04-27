@@ -14,11 +14,11 @@ use amaze::preamble::{GridCoord2D, Wall4Grid};
 #[cfg(feature = "solvers")]
 use amaze::solvers::{BfsSolver, MazeSolver};
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::direction6::Direction6;
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::preamble::{HexCoord, Wall6Grid};
 
 /// Helper function to verify a maze is a connected spanning tree
@@ -173,7 +173,7 @@ fn prim_produces_valid_trees() {
     assert_connected_tree(&maze);
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 fn assert_connected_tree_hex(grid: &Wall6Grid) {
     let total_cells = grid.width() * grid.height();
 
@@ -223,7 +223,7 @@ fn assert_connected_tree_hex(grid: &Wall6Grid) {
     );
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 #[test]
 fn hex_generators_produce_spanning_trees() {
     let size = (10, 10);
@@ -238,7 +238,7 @@ fn hex_generators_produce_spanning_trees() {
     assert_connected_tree_hex(&grid3);
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 #[test]
 fn recursive_backtracker6_produces_valid_trees() {
     for size in [5, 10, 15] {
@@ -247,14 +247,14 @@ fn recursive_backtracker6_produces_valid_trees() {
     }
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 #[test]
 fn growing_tree6_produces_valid_trees() {
     let maze = <GrowingTree6 as MazeGenerator6D>::new_from_seed(456).generate(10, 10);
     assert_connected_tree_hex(&maze);
 }
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 #[test]
 fn aldous_broder6_produces_valid_trees() {
     let maze = AldousBroder6::new_from_seed(789).generate(10, 10);

@@ -6,8 +6,8 @@ edition = "2024"
 rust-version = "1.92.0"
 
 [features]
-default = ["generator-hex"]
-generator-hex = ["amaze/generator-hex"]
+default = ["generators-hex"]
+generators-hex= ["amaze/generators-hex"]
 
 [dependencies]
 amaze.workspace = true

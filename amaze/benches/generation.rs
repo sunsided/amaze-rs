@@ -4,7 +4,7 @@ use amaze::generators::{
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "generator-hex")]
+#[cfg(feature = "generators-hex")]
 use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
 
 fn bench_generators(c: &mut Criterion) {
@@ -61,7 +61,7 @@ fn bench_generators(c: &mut Criterion) {
         }
     }
 
-    #[cfg(feature = "generator-hex")]
+    #[cfg(feature = "generators-hex")]
     {
         use amaze::generators::NewestCell;
 

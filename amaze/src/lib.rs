@@ -15,6 +15,12 @@ pub mod room4_list;
 #[cfg(feature = "solvers")]
 pub mod solvers;
 pub mod stats;
+#[cfg(any(
+    feature = "binary-format",
+    feature = "json-format",
+    feature = "file-io"
+))]
+pub mod storage;
 mod visit_map_2d;
 mod wall4_grid;
 mod wall6_grid;
@@ -28,8 +34,9 @@ pub mod preamble {
     pub use crate::path::Path;
     #[cfg(feature = "representations")]
     pub use crate::representations::{
-        AdjacencyList, Edge, EdgeList, PassabilityGrid, WeightedAdjacencyList, WeightedEdge,
-        WeightedEdgeList,
+        AdjacencyList, Edge, EdgeList, HexAdjacencyList, HexEdge, HexEdgeList, HexWeightedEdge,
+        PassabilityGrid, WeightedAdjacencyList, WeightedEdge, WeightedEdgeList,
+        WeightedHexAdjacencyList, WeightedHexEdgeList,
     };
     pub use crate::room4::{Door4, Room4, Wall4};
     pub use crate::room4_list::{Room4List, RoomIndex};

@@ -22,6 +22,12 @@ impl Direction4 {
     /// A bit mask used for obtaining valid values from arbitrary inputs.
     const MASK: u8 = Self::ALL.0;
 
+    #[cfg(any(feature = "binary-format", feature = "json-format"))]
+    #[inline]
+    pub(crate) fn from_bits(byte: u8) -> Self {
+        Self(byte & Self::MASK)
+    }
+
     /// Tests whether this direction value "contains" a specified set of directions.
     ///
     /// ## Example

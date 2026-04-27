@@ -1,7 +1,7 @@
 use crate::direction6::Direction6;
 use std::ops::{Add, Sub};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Default, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HexCoord {
     pub q: isize,
