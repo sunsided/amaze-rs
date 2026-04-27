@@ -9,6 +9,7 @@ use amaze::generators::{
 };
 use amaze::preamble::*;
 use eframe::{App, Frame, NativeOptions, egui, epaint::Color32};
+use rand::RngExt;
 use std::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -387,28 +388,40 @@ impl App for MyApp {
             ui.separator();
 
             ui.label("Seed (u64):");
-            let seed_response = ui.add(
-                egui::TextEdit::singleline(&mut self.seed_input)
-                    .hint_text("Enter seed (u64)")
-                    .desired_width(150.0),
-            );
-            if seed_response.changed() {
-                if let Ok(seed) = self.seed_input.parse::<u64>() {
-                    if seed != self.seed {
-                        self.seed = seed;
-                        if self.mode == Mode::Maze {
-                            regenerate_maze(self);
-                        } else {
-                            regenerate_dungeon(self);
-                        }
+            ui.horizontal(|ui| {
+                let seed_response = ui.add(
+                    egui::TextEdit::singleline(&mut self.seed_input)
+                        .hint_text("Enter seed (u64)")
+                        .desired_width(150.0),
+                );
+                if ui.button("Random").clicked() {
+                    let new_seed = rand::rng().random_range(0..1_000_000u64);
+                    self.seed = new_seed;
+                    self.seed_input = new_seed.to_string();
+                    if self.mode == Mode::Maze {
+                        regenerate_maze(self);
+                    } else {
+                        regenerate_dungeon(self);
                     }
-                } else {
-                    ui.label(
-                        egui::RichText::new("Invalid seed! Please enter a valid u64 number.")
-                            .color(Color32::RED),
-                    );
                 }
-            }
+                if seed_response.changed() {
+                    if let Ok(seed) = self.seed_input.parse::<u64>() {
+                        if seed != self.seed {
+                            self.seed = seed;
+                            if self.mode == Mode::Maze {
+                                regenerate_maze(self);
+                            } else {
+                                regenerate_dungeon(self);
+                            }
+                        }
+                    } else {
+                        ui.label(
+                            egui::RichText::new("Invalid seed! Please enter a valid u64 number.")
+                                .color(Color32::RED),
+                        );
+                    }
+                }
+            });
 
             ui.label("Width:");
             if ui

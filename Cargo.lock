@@ -181,6 +181,7 @@ dependencies = [
  "amaze",
  "eframe",
  "egui",
+ "rand",
 ]
 
 [[package]]
