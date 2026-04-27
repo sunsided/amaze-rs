@@ -2,7 +2,9 @@
 
 A playground for maze and procedural dungeon generation.
 
-![](docs/gui.png)
+| Hex Mazes | Rectangular Mazes |
+| --- | --- |
+| ![Hexagonal maze generation in the GUI](docs/gui-hex.png) | ![Rectangular maze generation in the GUI](docs/gui.png) |
 
 ## Features
 
@@ -82,17 +84,17 @@ cargo run --package amaze-cli -- gen-dungeon --type winding --seed 999 --width 3
 
 Example dungeon output (rooms type):
 ```text
-       ##########             
-      #..........####         
-      #..............#        
-      #..............#        
-      #..............#        
-      #..............#        
-      #..............#        
-      #..............#        
-      #.............E#        
-      #..........####         
-       ##########             
+       ##########
+      #..........####
+      #..............#
+      #..............#
+      #..............#
+      #..............#
+      #..............#
+      #..............#
+      #.............E#
+      #..........####
+       ##########
 ```
 
 Legend:
