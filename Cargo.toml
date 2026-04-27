@@ -6,15 +6,15 @@ default-members = ["amaze-cli", "amaze-gui"]
 [workspace.dependencies]
 # Internal dependencies
 amaze = { path = "amaze" }
-
-# Direct dependencies
-rand = "^0.10.1"
-serde = { version = "1", features = ["derive"] }
-petgraph = "0.8"
 clap = "4.6.1"
+criterion = "0.8"
 eframe = "0.34.1"
 egui = "0.34.1"
 
 # Dev dependencies
 indoc = "2.0.7"
-criterion = "0.8"
+petgraph = "0.8"
+
+# Direct dependencies
+rand = "^0.10.1"
+serde = { version = "1", features = ["derive"] }

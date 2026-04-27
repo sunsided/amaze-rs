@@ -1,4 +1,6 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType, solve_bfs};
+#[cfg(feature = "generator-hex")]
+use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
 use amaze::generators::{
     BinaryTree4, Eller4, GenerationStep, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D,
     Prim4, RecursiveBacktracker4, Sidewinder4, Wilson4,
@@ -24,6 +26,12 @@ enum AlgorithmChoice {
     Sidewinder,
     BinaryTree,
     Prim,
+    #[cfg(feature = "generator-hex")]
+    RecursiveBacktracker6,
+    #[cfg(feature = "generator-hex")]
+    GrowingTree6,
+    #[cfg(feature = "generator-hex")]
+    AldousBroder6,
 }
 
 impl AlgorithmChoice {
@@ -38,6 +46,20 @@ impl AlgorithmChoice {
             Self::Sidewinder => "Sidewinder",
             Self::BinaryTree => "Binary Tree",
             Self::Prim => "Prim",
+            #[cfg(feature = "generator-hex")]
+            Self::RecursiveBacktracker6 => "Hex Recursive Backtracker",
+            #[cfg(feature = "generator-hex")]
+            Self::GrowingTree6 => "Hex Growing Tree",
+            #[cfg(feature = "generator-hex")]
+            Self::AldousBroder6 => "Hex Aldous-Broder",
+        }
+    }
+
+    fn is_hex(self) -> bool {
+        match self {
+            #[cfg(feature = "generator-hex")]
+            Self::RecursiveBacktracker6 | Self::GrowingTree6 | Self::AldousBroder6 => true,
+            _ => false,
         }
     }
 }
@@ -50,6 +72,8 @@ struct MyApp {
     height: usize,
     algorithm: AlgorithmChoice,
     maze: Mutex<Wall4Grid>,
+    #[cfg(feature = "generator-hex")]
+    hex_maze: Mutex<Option<Wall6Grid>>,
     dungeon: Mutex<DungeonGrid>,
     dungeon_type: DungeonType,
     floor_count: usize,
@@ -89,6 +113,8 @@ impl Default for MyApp {
             height: initial_height,
             algorithm,
             maze: Mutex::new(maze),
+            #[cfg(feature = "generator-hex")]
+            hex_maze: Mutex::new(None),
             dungeon: Mutex::new(dungeon),
             dungeon_type: DungeonType::Rooms,
             floor_count: 120,
@@ -195,6 +221,24 @@ impl App for MyApp {
                             &mut self.algorithm,
                             AlgorithmChoice::Prim,
                             AlgorithmChoice::Prim.as_str(),
+                        );
+                        #[cfg(feature = "generator-hex")]
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::RecursiveBacktracker6,
+                            AlgorithmChoice::RecursiveBacktracker6.as_str(),
+                        );
+                        #[cfg(feature = "generator-hex")]
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::GrowingTree6,
+                            AlgorithmChoice::GrowingTree6.as_str(),
+                        );
+                        #[cfg(feature = "generator-hex")]
+                        ui.selectable_value(
+                            &mut self.algorithm,
+                            AlgorithmChoice::AldousBroder6,
+                            AlgorithmChoice::AldousBroder6.as_str(),
                         );
                     });
 
@@ -391,6 +435,13 @@ impl App for MyApp {
             ui.separator();
 
             if self.mode == Mode::Maze {
+                #[cfg(feature = "generator-hex")]
+                if self.algorithm.is_hex() {
+                    render_hex_maze(ui, self, &ctx);
+                } else {
+                    render_maze(ui, self, &ctx);
+                }
+                #[cfg(not(feature = "generator-hex"))]
                 render_maze(ui, self, &ctx);
             } else {
                 render_dungeon(ui, self, &ctx);
@@ -430,6 +481,10 @@ fn generate_maze(algorithm: AlgorithmChoice, seed: u64, width: usize, height: us
         AlgorithmChoice::Prim => {
             <Prim4 as MazeGenerator2D>::new_from_seed(seed).generate(width, height)
         }
+        #[cfg(feature = "generator-hex")]
+        AlgorithmChoice::RecursiveBacktracker6
+        | AlgorithmChoice::GrowingTree6
+        | AlgorithmChoice::AldousBroder6 => Wall4Grid::new(width, height),
     }
 }
 
@@ -467,6 +522,12 @@ fn generate_steps(
         AlgorithmChoice::Prim => <Prim4 as MazeGenerator2D>::new_from_seed(seed)
             .generate_steps(width, height)
             .collect(),
+        #[cfg(feature = "generator-hex")]
+        AlgorithmChoice::RecursiveBacktracker6
+        | AlgorithmChoice::GrowingTree6
+        | AlgorithmChoice::AldousBroder6 => {
+            vec![GenerationStep::Complete]
+        }
     }
 }
 
@@ -477,8 +538,38 @@ fn regenerate_maze(app: &mut MyApp) {
     app.start_cell = None;
     app.end_cell = None;
     app.auto_fit_pending = true;
+
+    #[cfg(feature = "generator-hex")]
+    if app.algorithm.is_hex() {
+        let grid = generate_hex_maze(app.algorithm, app.seed, app.width, app.height);
+        let mut lock = app.hex_maze.lock().unwrap();
+        *lock = Some(grid);
+        return;
+    }
+
     let mut lock = app.maze.lock().unwrap();
     *lock = generate_maze(app.algorithm, app.seed, app.width, app.height);
+}
+
+#[cfg(feature = "generator-hex")]
+fn generate_hex_maze(
+    algorithm: AlgorithmChoice,
+    seed: u64,
+    width: usize,
+    height: usize,
+) -> Wall6Grid {
+    match algorithm {
+        AlgorithmChoice::RecursiveBacktracker6 => {
+            RecursiveBacktracker6::new_from_seed(seed).generate(width, height)
+        }
+        AlgorithmChoice::GrowingTree6 => {
+            <GrowingTree6 as MazeGenerator6D>::new_from_seed(seed).generate(width, height)
+        }
+        AlgorithmChoice::AldousBroder6 => {
+            AldousBroder6::new_from_seed(seed).generate(width, height)
+        }
+        _ => Wall6Grid::new(width, height),
+    }
 }
 
 fn regenerate_dungeon(app: &mut MyApp) {
@@ -764,6 +855,121 @@ fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
     fit_w.min(fit_h).clamp(0.1, 5.0)
 }
 
+#[cfg(feature = "generator-hex")]
+fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
+    let hex_maze = app.hex_maze.lock().unwrap();
+    let Some(maze) = hex_maze.as_ref() else {
+        return;
+    };
+
+    let base_cell_size = 30.0;
+    let cell_size = base_cell_size * app.zoom;
+
+    // `cell_size` is the vertex-to-vertex diameter of a pointy-top hex,
+    // so the circumradius (center-to-vertex) is half of it.
+    let radius = cell_size * 0.5;
+    // Pointy-top hex tiling:
+    //   horizontal spacing between neighbor centers = sqrt(3) * radius (= hex width)
+    //   vertical spacing between row centers        = 1.5 * radius
+    let spacing_x = radius * f32::sqrt(3.0);
+    let spacing_y = radius * 1.5;
+
+    // Odd-r offset layout ("rectangular-ish"): odd rows shift right by half a column.
+    let total_width = (maze.width() as f32) * spacing_x + spacing_x * 0.5;
+    let total_height = (maze.height() as f32 - 1.0) * spacing_y + 2.0 * radius;
+
+    let available_size = ui.available_size();
+    let (_response, painter) = ui.allocate_painter(available_size, egui::Sense::hover());
+    let available_rect = _response.rect;
+
+    if app.auto_fit_pending {
+        let padding = 24.0;
+        // `total_width`/`total_height` are computed from `cell_size`, which
+        // already includes the current `app.zoom`. So `fit_w`/`fit_h` are the
+        // multiplicative factors to apply to the current zoom to make the maze
+        // fit the viewport.
+        let fit_w = (available_size.x - padding).max(32.0) / total_width;
+        let fit_h = (available_size.y - padding).max(32.0) / total_height;
+        app.zoom = (app.zoom * fit_w.min(fit_h)).clamp(0.1, 5.0);
+        app.auto_fit_pending = false;
+    }
+
+    let center = available_rect.center();
+    let maze_top_left = egui::pos2(
+        center.x - total_width / 2.0 + app.pan.x,
+        center.y - total_height / 2.0 + app.pan.y,
+    );
+
+    let stroke = egui::Stroke::new(2.0, Color32::BLACK);
+
+    for r in 0..maze.height() {
+        for q in 0..maze.width() {
+            let coord = HexCoord::new(q as isize, r as isize);
+            let wall = maze.get(coord).expect("coord in bounds");
+
+            // Odd-r offset: odd rows are shifted right by half a column,
+            // which avoids the cumulative parallelogram slant of pure axial layout.
+            let row_shift = if r % 2 == 1 { spacing_x * 0.5 } else { 0.0 };
+            let cx = maze_top_left.x + (q as f32) * spacing_x + row_shift + spacing_x * 0.5;
+            let cy = maze_top_left.y + (r as f32) * spacing_y + radius;
+
+            let angles: [f32; 6] = [
+                std::f32::consts::FRAC_PI_6,
+                std::f32::consts::FRAC_PI_6 * 3.0,
+                std::f32::consts::FRAC_PI_6 * 5.0,
+                std::f32::consts::FRAC_PI_6 * 7.0,
+                std::f32::consts::FRAC_PI_6 * 9.0,
+                std::f32::consts::FRAC_PI_6 * 11.0,
+            ];
+
+            let vertices: [egui::Pos2; 6] = angles.map(|angle| {
+                egui::pos2(
+                    cx + cell_size * 0.5 * angle.cos(),
+                    cy + cell_size * 0.5 * angle.sin(),
+                )
+            });
+
+            let fill_color = if (q + r) % 2 == 0 {
+                Color32::from_rgb(240, 240, 240)
+            } else {
+                Color32::from_rgb(220, 220, 220)
+            };
+
+            let hex_points = vec![
+                vertices[0],
+                vertices[1],
+                vertices[2],
+                vertices[3],
+                vertices[4],
+                vertices[5],
+            ];
+            painter.add(egui::Shape::convex_polygon(
+                hex_points,
+                fill_color,
+                egui::Stroke::NONE,
+            ));
+
+            let wall_dirs = [
+                Direction6::EAST,
+                Direction6::SE,
+                Direction6::SW,
+                Direction6::WEST,
+                Direction6::NW,
+                Direction6::NE,
+            ];
+
+            let edges = [(0usize, 1usize), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
+
+            for (i, &dir) in wall_dirs.iter().enumerate() {
+                if wall.contains(dir) {
+                    let (a, b) = edges[i];
+                    painter.line_segment([vertices[a], vertices[b]], stroke);
+                }
+            }
+        }
+    }
+}
+
 fn fit_zoom_to_dungeon(dungeon: &DungeonGrid, available_size: egui::Vec2) -> f32 {
     let base_cell_size = 30.0;
     let dungeon_w = (dungeon.width() as f32) * base_cell_size;
@@ -817,8 +1023,11 @@ fn handle_panning_zooming(ctx: &egui::Context, app: &mut MyApp) {
         app.dragging = false;
     }
 
+    // Don't zoom with the scroll wheel while a popup/dropdown (e.g. a ComboBox)
+    // is open, otherwise scrolling through combo options also zooms the view.
+    let popup_open = egui::Popup::is_any_open(ctx);
     let scroll_delta = ctx.input(|i| i.smooth_scroll_delta.y);
-    if scroll_delta != 0.0 {
+    if scroll_delta != 0.0 && !popup_open {
         let zoom_factor = 1.1_f32.powf(scroll_delta / 10.0);
         app.zoom = (app.zoom * zoom_factor).clamp(0.1, 5.0);
     }

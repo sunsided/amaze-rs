@@ -14,6 +14,13 @@ use amaze::preamble::{GridCoord2D, Wall4Grid};
 #[cfg(feature = "solvers")]
 use amaze::solvers::{BfsSolver, MazeSolver};
 
+#[cfg(feature = "generator-hex")]
+use amaze::direction6::Direction6;
+#[cfg(feature = "generator-hex")]
+use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
+#[cfg(feature = "generator-hex")]
+use amaze::preamble::{HexCoord, Wall6Grid};
+
 /// Helper function to verify a maze is a connected spanning tree
 fn assert_connected_tree(grid: &Wall4Grid) {
     let total_cells = grid.width() * grid.height();
@@ -164,4 +171,92 @@ fn binary_tree_produces_valid_trees() {
 fn prim_produces_valid_trees() {
     let maze = <Prim4 as MazeGenerator2D>::new_from_seed(369).generate(10, 10);
     assert_connected_tree(&maze);
+}
+
+#[cfg(feature = "generator-hex")]
+fn assert_connected_tree_hex(grid: &Wall6Grid) {
+    let total_cells = grid.width() * grid.height();
+
+    let mut edge_count = 0;
+    for coord in grid.coords() {
+        let walls = grid.get(coord).expect("coord in bounds");
+        for dir in [Direction6::EAST, Direction6::NE, Direction6::SE] {
+            if coord
+                .try_neighbor(dir, grid.width(), grid.height())
+                .is_some()
+                && !walls.contains(dir)
+            {
+                edge_count += 1;
+            }
+        }
+    }
+
+    assert_eq!(
+        edge_count,
+        total_cells - 1,
+        "Hex maze should be a spanning tree with {} edges",
+        total_cells - 1
+    );
+
+    let start = HexCoord::new(0, 0);
+    let mut visited = vec![false; total_cells];
+    let mut queue = std::collections::VecDeque::new();
+    visited[0] = true;
+    queue.push_back(start);
+    let mut count = 0;
+
+    while let Some(cell) = queue.pop_front() {
+        count += 1;
+        for n in grid.open_neighbors(cell) {
+            let idx = (n.r as usize) * grid.width() + n.q as usize;
+            if !visited[idx] {
+                visited[idx] = true;
+                queue.push_back(n);
+            }
+        }
+    }
+
+    assert_eq!(
+        count, total_cells,
+        "All {} cells should be reachable from (0,0), but only {} were",
+        total_cells, count
+    );
+}
+
+#[cfg(feature = "generator-hex")]
+#[test]
+fn hex_generators_produce_spanning_trees() {
+    let size = (10, 10);
+
+    let grid1 = RecursiveBacktracker6::new_from_seed(42).generate(size.0, size.1);
+    assert_connected_tree_hex(&grid1);
+
+    let grid2 = <GrowingTree6 as MazeGenerator6D>::new_from_seed(42).generate(size.0, size.1);
+    assert_connected_tree_hex(&grid2);
+
+    let grid3 = AldousBroder6::new_from_seed(42).generate(size.0, size.1);
+    assert_connected_tree_hex(&grid3);
+}
+
+#[cfg(feature = "generator-hex")]
+#[test]
+fn recursive_backtracker6_produces_valid_trees() {
+    for size in [5, 10, 15] {
+        let maze = RecursiveBacktracker6::new_from_seed(123).generate(size, size);
+        assert_connected_tree_hex(&maze);
+    }
+}
+
+#[cfg(feature = "generator-hex")]
+#[test]
+fn growing_tree6_produces_valid_trees() {
+    let maze = <GrowingTree6 as MazeGenerator6D>::new_from_seed(456).generate(10, 10);
+    assert_connected_tree_hex(&maze);
+}
+
+#[cfg(feature = "generator-hex")]
+#[test]
+fn aldous_broder6_produces_valid_trees() {
+    let maze = AldousBroder6::new_from_seed(789).generate(10, 10);
+    assert_connected_tree_hex(&maze);
 }

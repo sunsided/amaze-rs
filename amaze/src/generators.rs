@@ -15,8 +15,21 @@ mod recursive_backtracker4;
 mod sidewinder4;
 mod wilson4;
 
+#[cfg(feature = "generator-hex-aldous-broder")]
+mod aldous_broder6;
+#[cfg(feature = "generator-hex-growing-tree")]
+mod growing_tree6;
+#[cfg(feature = "generator-hex-recursive-backtracker")]
+mod recursive_backtracker6;
+
 use crate::grid_coord_2d::GridCoord2D;
 use crate::wall4_grid::Wall4Grid;
+#[cfg(feature = "generator-hex-aldous-broder")]
+pub use aldous_broder6::AldousBroder6;
+#[cfg(feature = "generator-hex-growing-tree")]
+pub use growing_tree6::GrowingTree6;
+#[cfg(feature = "generator-hex-recursive-backtracker")]
+pub use recursive_backtracker6::RecursiveBacktracker6;
 
 pub use binary_tree4::BinaryTree4;
 pub use cell_selector::{CellSelector, MixedCell, NewestCell, OldestCell, RandomCell};
@@ -28,6 +41,13 @@ pub use prim4::Prim4;
 pub use recursive_backtracker4::RecursiveBacktracker4;
 pub use sidewinder4::Sidewinder4;
 pub use wilson4::Wilson4;
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+use crate::wall6_grid::Wall6Grid;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -100,5 +120,33 @@ pub trait MazeGenerator2D {
 
     fn description(&self) -> &'static str {
         "maze generator"
+    }
+}
+
+#[cfg(any(
+    feature = "generator-hex-recursive-backtracker",
+    feature = "generator-hex-growing-tree",
+    feature = "generator-hex-aldous-broder",
+))]
+pub trait MazeGenerator6D {
+    fn new_random() -> Self
+    where
+        Self: Sized;
+    fn new_from_seed(rng_seed: u64) -> Self
+    where
+        Self: Sized;
+    fn generate(&self, width: usize, height: usize) -> Wall6Grid;
+
+    fn generate_steps(&self, width: usize, height: usize) -> GenerationSteps {
+        let _ = self.generate(width, height);
+        GenerationSteps::new(vec![GenerationStep::Complete])
+    }
+
+    fn name(&self) -> &'static str {
+        "unknown"
+    }
+
+    fn description(&self) -> &'static str {
+        "hex maze generator"
     }
 }

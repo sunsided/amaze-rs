@@ -1,5 +1,7 @@
 use crate::grid_coord_2d::{GridCoord2D, LinearizeCoords2D};
+use crate::hex_coord::HexCoord;
 use crate::wall4_grid::Wall4Grid;
+use crate::wall6_grid::Wall6Grid;
 
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -28,6 +30,32 @@ impl MazeStats {
 
         let avg = average_shortest_path_length(grid);
         let longest_path = maze_diameter(grid);
+
+        Self {
+            dead_ends,
+            corridors,
+            junctions,
+            longest_path,
+            average_path_length: avg,
+        }
+    }
+
+    pub fn from_grid_hex(grid: &Wall6Grid) -> Self {
+        let mut dead_ends = 0usize;
+        let mut corridors = 0usize;
+        let mut junctions = 0usize;
+
+        for cell in grid.coords() {
+            let degree = grid.open_neighbors(cell).count();
+            match degree {
+                0 | 1 => dead_ends += 1,
+                2 => corridors += 1,
+                _ => junctions += 1,
+            }
+        }
+
+        let avg = average_shortest_path_length_hex(grid);
+        let longest_path = maze_diameter_hex(grid);
 
         Self {
             dead_ends,
@@ -77,6 +105,59 @@ fn average_shortest_path_length(grid: &Wall4Grid) -> f64 {
         let dist = grid.bfs_distances(start);
         for end in cells.iter().copied().skip(i + 1) {
             if let Some(d) = dist[grid.linearize_coords(end)] {
+                sum += d;
+                count += 1;
+            }
+        }
+    }
+
+    if count == 0 {
+        0.0
+    } else {
+        sum as f64 / count as f64
+    }
+}
+
+fn maze_diameter_hex(grid: &Wall6Grid) -> usize {
+    if grid.width() == 0 || grid.height() == 0 {
+        return 0;
+    }
+
+    let start = HexCoord::new(0, 0);
+    let first = farthest_from_hex(grid, start).0;
+    farthest_from_hex(grid, first).1
+}
+
+fn farthest_from_hex(grid: &Wall6Grid, start: HexCoord) -> (HexCoord, usize) {
+    let dist = grid.bfs_distances(start);
+    let mut farthest = (start, 0usize);
+
+    for cell in grid.coords() {
+        let idx = (cell.r as usize) * grid.width() + cell.q as usize;
+        if let Some(d) = dist[idx] {
+            if d > farthest.1 {
+                farthest = (cell, d);
+            }
+        }
+    }
+
+    farthest
+}
+
+fn average_shortest_path_length_hex(grid: &Wall6Grid) -> f64 {
+    if grid.width() == 0 || grid.height() == 0 {
+        return 0.0;
+    }
+
+    let cells: Vec<_> = grid.coords().collect();
+    let mut sum = 0usize;
+    let mut count = 0usize;
+
+    for (i, start) in cells.iter().copied().enumerate() {
+        let dist = grid.bfs_distances(start);
+        for end in cells.iter().copied().skip(i + 1) {
+            let idx = (end.r as usize) * grid.width() + end.q as usize;
+            if let Some(d) = dist[idx] {
                 sum += d;
                 count += 1;
             }

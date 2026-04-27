@@ -5,6 +5,10 @@ version = "0.3.0"
 edition = "2024"
 rust-version = "1.92.0"
 
+[features]
+default = ["generator-hex"]
+generator-hex = ["amaze/generator-hex"]
+
 [dependencies]
 amaze.workspace = true
 eframe.workspace = true

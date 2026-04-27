@@ -4,6 +4,9 @@ use amaze::generators::{
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
+#[cfg(feature = "generator-hex")]
+use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
+
 fn bench_generators(c: &mut Criterion) {
     let sizes = [(16, "16x16"), (64, "64x64"), (256, "256x256")];
 
@@ -55,6 +58,36 @@ fn bench_generators(c: &mut Criterion) {
             group.bench_with_input(id, &size, |b, &size| {
                 b.iter(|| generator.generate(size, size))
             });
+        }
+    }
+
+    #[cfg(feature = "generator-hex")]
+    {
+        use amaze::generators::NewestCell;
+
+        let hex_generators: Vec<(&str, Box<dyn MazeGenerator6D>)> = vec![
+            (
+                "hex_recursive_backtracker",
+                Box::new(RecursiveBacktracker6::new_from_seed(1337)) as Box<dyn MazeGenerator6D>,
+            ),
+            (
+                "hex_growing_tree",
+                Box::new(GrowingTree6::<NewestCell>::new_from_seed(1337))
+                    as Box<dyn MazeGenerator6D>,
+            ),
+            (
+                "hex_aldous_broder",
+                Box::new(AldousBroder6::new_from_seed(1337)) as Box<dyn MazeGenerator6D>,
+            ),
+        ];
+
+        for (name, generator) in hex_generators {
+            for &(size, label) in &sizes {
+                let id = BenchmarkId::new(name, label);
+                group.bench_with_input(id, &size, |b, &size| {
+                    b.iter(|| generator.generate(size, size))
+                });
+            }
         }
     }
 

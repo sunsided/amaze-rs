@@ -34,6 +34,15 @@ generator-sidewinder = []
 generator-binary-tree = []
 generator-prim = []
 
+generator-hex = [
+    "generator-hex-recursive-backtracker",
+    "generator-hex-growing-tree",
+    "generator-hex-aldous-broder",
+]
+generator-hex-recursive-backtracker = []
+generator-hex-growing-tree = []
+generator-hex-aldous-broder = []
+
 solvers = ["solver-bfs", "solver-dfs", "solver-astar", "solver-dead-end"]
 solver-bfs = []
 solver-dfs = []

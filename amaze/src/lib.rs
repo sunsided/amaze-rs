@@ -1,7 +1,9 @@
 pub mod direction4;
+pub mod direction6;
 pub mod dungeon;
 pub mod generators;
 mod grid_coord_2d;
+mod hex_coord;
 pub mod path;
 #[cfg(feature = "representations")]
 pub mod representations;
@@ -15,11 +17,14 @@ pub mod solvers;
 pub mod stats;
 mod visit_map_2d;
 mod wall4_grid;
+mod wall6_grid;
 
 pub mod preamble {
     pub use crate::direction4::{Direction4, Direction4Iterator};
+    pub use crate::direction6::{Direction6, Direction6Iterator};
     pub use crate::dungeon::{DungeonGrid, DungeonType, TileType};
     pub use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
+    pub use crate::hex_coord::HexCoord;
     pub use crate::path::Path;
     #[cfg(feature = "representations")]
     pub use crate::representations::{
@@ -32,4 +37,5 @@ pub mod preamble {
     pub use crate::solvers::{AStarSolver, BfsSolver, DeadEndFillingSolver, DfsSolver, MazeSolver};
     pub use crate::stats::MazeStats;
     pub use crate::wall4_grid::Wall4Grid;
+    pub use crate::wall6_grid::{Wall6, Wall6Grid};
 }

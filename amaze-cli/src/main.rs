@@ -1,4 +1,6 @@
 use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType};
+#[cfg(feature = "generator-hex")]
+use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
 use amaze::generators::{
     BinaryTree4, Eller4, GrowingTree4, HuntAndKill4, Kruskal4, MazeGenerator2D, MixedCell, Prim4,
     RecursiveBacktracker4, Sidewinder4, Wilson4,
@@ -37,6 +39,9 @@ fn main() {
                             "sidewinder",
                             "binary-tree",
                             "prim",
+                            "hex-recursive-backtracker",
+                            "hex-growing-tree",
+                            "hex-aldous-broder",
                         ])
                         .action(ArgAction::Set),
                 )
@@ -173,6 +178,8 @@ fn main() {
             let style = gen_matches
                 .get_one::<RenderStyle>("style")
                 .unwrap_or(&default_style);
+
+            #[cfg(not(feature = "generator-hex"))]
             let grid =
                 match algorithm.as_str() {
                     "recursive-backtracker" => {
@@ -207,6 +214,8 @@ fn main() {
                     }
                     _ => unreachable!(),
                 };
+
+            #[cfg(not(feature = "generator-hex"))]
             match style {
                 RenderStyle::Unicode(style) => {
                     let renderer = UnicodeRenderer::new(*style, true);
@@ -216,6 +225,78 @@ fn main() {
                     let renderer = ImageRenderer::new(*style);
                     println!("{}", renderer.render(&grid).trim_end());
                 }
+            }
+
+            #[cfg(feature = "generator-hex")]
+            match algorithm.as_str() {
+                "recursive-backtracker" => {
+                    let grid = RecursiveBacktracker4::new_from_seed(seed).generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "growing-tree" => {
+                    let grid = <GrowingTree4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "growing-tree-mixed" => {
+                    let grid = GrowingTree4::new_from_seed_with_selector(
+                        seed,
+                        MixedCell {
+                            newest_probability: 0.7,
+                        },
+                    )
+                    .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "kruskal" => {
+                    let grid = <Kruskal4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "eller" => {
+                    let grid =
+                        <Eller4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "wilson" => {
+                    let grid =
+                        <Wilson4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "hunt-and-kill" => {
+                    let grid = <HuntAndKill4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "sidewinder" => {
+                    let grid = <Sidewinder4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "binary-tree" => {
+                    let grid = <BinaryTree4 as MazeGenerator2D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "prim" => {
+                    let grid =
+                        <Prim4 as MazeGenerator2D>::new_from_seed(seed).generate(*width, *height);
+                    render_grid(&grid, style);
+                }
+                "hex-recursive-backtracker" => {
+                    let grid = RecursiveBacktracker6::new_from_seed(seed).generate(*width, *height);
+                    render_hex_grid(&grid);
+                }
+                "hex-growing-tree" => {
+                    let grid = <GrowingTree6 as MazeGenerator6D>::new_from_seed(seed)
+                        .generate(*width, *height);
+                    render_hex_grid(&grid);
+                }
+                "hex-aldous-broder" => {
+                    let grid = AldousBroder6::new_from_seed(seed).generate(*width, *height);
+                    render_hex_grid(&grid);
+                }
+                _ => unreachable!(),
             }
         }
         Some(("gen-dungeon", dungeon_matches)) => {
@@ -286,4 +367,35 @@ fn render_dungeon(dungeon: &DungeonGrid) -> String {
     }
 
     output
+}
+
+#[cfg(feature = "generator-hex")]
+fn render_grid(grid: &Wall4Grid, style: &RenderStyle) {
+    match style {
+        RenderStyle::Unicode(style) => {
+            let renderer = UnicodeRenderer::new(*style, true);
+            println!("{}", renderer.render(grid).trim_end());
+        }
+        RenderStyle::Image(style) => {
+            let renderer = ImageRenderer::new(*style);
+            println!("{}", renderer.render(grid).trim_end());
+        }
+    }
+}
+
+#[cfg(feature = "generator-hex")]
+fn render_hex_grid(grid: &Wall6Grid) {
+    let mut output = String::new();
+    for r in 0..grid.height() {
+        if r % 2 == 1 {
+            output.push(' ');
+        }
+        for q in 0..grid.width() {
+            let coord = HexCoord::new(q as isize, r as isize);
+            let walls = grid.get(coord).expect("coord in bounds");
+            output.push_str(&format!("{:02X} ", { **walls }));
+        }
+        output.push('\n');
+    }
+    println!("{}", output.trim_end());
 }
