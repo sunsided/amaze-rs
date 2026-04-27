@@ -89,6 +89,10 @@ struct MyApp {
     prev_available_size: Option<egui::Vec2>,
     start_cell: Option<GridCoord2D>,
     end_cell: Option<GridCoord2D>,
+    #[cfg(feature = "generator-hex")]
+    hex_start_cell: Option<HexCoord>,
+    #[cfg(feature = "generator-hex")]
+    hex_end_cell: Option<HexCoord>,
     animation_steps: Vec<GenerationStep>,
     #[cfg(feature = "generator-hex")]
     hex_animation_steps: Vec<HexGenerationStep>,
@@ -132,6 +136,10 @@ impl Default for MyApp {
             prev_available_size: None,
             start_cell: None,
             end_cell: None,
+            #[cfg(feature = "generator-hex")]
+            hex_start_cell: None,
+            #[cfg(feature = "generator-hex")]
+            hex_end_cell: None,
             animation_steps: Vec::new(),
             #[cfg(feature = "generator-hex")]
             hex_animation_steps: Vec::new(),
@@ -168,6 +176,11 @@ impl App for MyApp {
                 self.auto_fit_pending = true;
                 self.start_cell = None;
                 self.end_cell = None;
+                #[cfg(feature = "generator-hex")]
+                {
+                    self.hex_start_cell = None;
+                    self.hex_end_cell = None;
+                }
                 // Regenerate content for the new mode
                 match self.mode {
                     Mode::Maze => regenerate_maze(self),
@@ -432,6 +445,11 @@ impl App for MyApp {
                 self.pan = egui::Vec2::new(0.0, 0.0);
                 self.start_cell = None;
                 self.end_cell = None;
+                #[cfg(feature = "generator-hex")]
+                {
+                    self.hex_start_cell = None;
+                    self.hex_end_cell = None;
+                }
             }
 
             if let (Some(start), Some(end)) = (self.start_cell, self.end_cell) {
@@ -586,6 +604,11 @@ fn regenerate_maze(app: &mut MyApp) {
     app.animation_index = 0;
     app.start_cell = None;
     app.end_cell = None;
+    #[cfg(feature = "generator-hex")]
+    {
+        app.hex_start_cell = None;
+        app.hex_end_cell = None;
+    }
     app.auto_fit_pending = true;
 
     #[cfg(feature = "generator-hex")]
@@ -905,7 +928,45 @@ fn fit_zoom_to_available(maze: &Wall4Grid, available_size: egui::Vec2) -> f32 {
 }
 
 #[cfg(feature = "generator-hex")]
-fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
+fn bfs_hex_solve(
+    maze: &Wall6Grid,
+    start: HexCoord,
+    end: HexCoord,
+) -> Option<std::collections::HashSet<HexCoord>> {
+    use std::collections::{HashMap, HashSet, VecDeque};
+    if maze.get(start).is_none() || maze.get(end).is_none() {
+        return None;
+    }
+    let mut queue = VecDeque::new();
+    let mut parent: HashMap<HexCoord, HexCoord> = HashMap::new();
+    let mut seen: HashSet<HexCoord> = HashSet::new();
+    seen.insert(start);
+    queue.push_back(start);
+    while let Some(cell) = queue.pop_front() {
+        if cell == end {
+            let mut path: HashSet<HexCoord> = HashSet::new();
+            let mut cur = end;
+            path.insert(cur);
+            while cur != start {
+                let p = *parent.get(&cur)?;
+                path.insert(p);
+                cur = p;
+            }
+            return Some(path);
+        }
+        for next in maze.open_neighbors(cell) {
+            if !seen.contains(&next) {
+                seen.insert(next);
+                parent.insert(next, cell);
+                queue.push_back(next);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(feature = "generator-hex")]
+fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, ctx: &egui::Context) {
     let hex_maze = app.hex_maze.lock().unwrap();
     let Some(maze) = hex_maze.as_ref() else {
         return;
@@ -951,6 +1012,67 @@ fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
         center.x - total_width / 2.0 + app.pan.x,
         center.y - total_height / 2.0 + app.pan.y,
     );
+
+    // Hex hit-testing: given a mouse position, find the cell whose center is
+    // nearest. Since hex tiles form a Voronoi of their centers, nearest-center
+    // is exactly point-in-hex.
+    let cell_center = |q: isize, r: isize| -> egui::Pos2 {
+        let row_shift = (r as f32) * spacing_x * 0.5;
+        egui::pos2(
+            maze_top_left.x + (q as f32) * spacing_x + row_shift + spacing_x * 0.5,
+            maze_top_left.y + (r as f32) * spacing_y + radius,
+        )
+    };
+    let hover_pos = ctx.input(|i| i.pointer.hover_pos());
+    let hovered_coord: Option<HexCoord> = hover_pos.and_then(|m| {
+        let r_approx = ((m.y - maze_top_left.y - radius) / spacing_y).round() as isize;
+        let mut best: Option<(HexCoord, f32)> = None;
+        for dr in -1..=1 {
+            let r = r_approx + dr;
+            if r < 0 || r as usize >= maze.height() {
+                continue;
+            }
+            let q_approx =
+                ((m.x - maze_top_left.x - spacing_x * 0.5 - (r as f32) * spacing_x * 0.5)
+                    / spacing_x)
+                    .round() as isize;
+            for dq in -1..=1 {
+                let q = q_approx + dq;
+                if q < 0 || q as usize >= maze.width() {
+                    continue;
+                }
+                let c = cell_center(q, r);
+                let d2 = (m.x - c.x).powi(2) + (m.y - c.y).powi(2);
+                // Discard candidates outside the circumscribed circle; nearest-
+                // center within that radius is always the containing hex.
+                if d2 > radius * radius {
+                    continue;
+                }
+                if best.is_none_or(|(_, bd)| d2 < bd) {
+                    best = Some((HexCoord::new(q, r), d2));
+                }
+            }
+        }
+        best.map(|(c, _)| c)
+    });
+
+    if ctx.input(|i| i.pointer.any_click())
+        && let Some(clicked) = hovered_coord
+    {
+        if app.hex_start_cell.is_none() || app.hex_end_cell.is_some() {
+            app.hex_start_cell = Some(clicked);
+            app.hex_end_cell = None;
+        } else {
+            app.hex_end_cell = Some(clicked);
+        }
+    }
+
+    let solution: Option<std::collections::HashSet<HexCoord>> =
+        if let (Some(s), Some(e)) = (app.hex_start_cell, app.hex_end_cell) {
+            bfs_hex_solve(maze, s, e)
+        } else {
+            None
+        };
 
     let stroke = egui::Stroke::new(2.0, Color32::BLACK);
 
@@ -1017,7 +1139,19 @@ fn render_hex_maze(ui: &mut egui::Ui, app: &mut MyApp, _ctx: &egui::Context) {
             });
 
             let shade_idx = (q as isize - r as isize).rem_euclid(3) as usize;
-            let fill_color = fill_shades[shade_idx];
+            let coord_here = HexCoord::new(q as isize, r as isize);
+            let in_solution = solution.as_ref().is_some_and(|p| p.contains(&coord_here));
+            let fill_color = if Some(coord_here) == app.hex_start_cell {
+                Color32::from_rgb(255, 200, 200)
+            } else if Some(coord_here) == app.hex_end_cell {
+                Color32::from_rgb(200, 200, 255)
+            } else if in_solution {
+                Color32::from_rgb(180, 230, 180)
+            } else if hovered_coord == Some(coord_here) {
+                Color32::from_rgb(255, 255, 200)
+            } else {
+                fill_shades[shade_idx]
+            };
 
             let base = fill_mesh.vertices.len() as u32;
             // Center vertex.
