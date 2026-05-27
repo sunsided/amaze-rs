@@ -179,6 +179,15 @@ impl DungeonGrid {
     ///
     /// If no non-Empty tiles exist, returns a minimal 1x1 Empty grid.
     pub fn trim(&self, padding: usize) -> Self {
+        self.trim_with_offset(padding).0
+    }
+
+    /// Like [`trim`](Self::trim), but also returns the top-left origin (in the
+    /// original grid's coordinates) that the trimmed grid was cropped to.
+    ///
+    /// Subtracting this offset from any original coordinate maps it into the
+    /// trimmed grid's coordinate space. For an empty grid the offset is `(0, 0)`.
+    pub fn trim_with_offset(&self, padding: usize) -> (Self, GridCoord2D) {
         // Find bounding box of all non-Empty tiles
         let mut min_x = usize::MAX;
         let mut min_y = usize::MAX;
@@ -208,7 +217,7 @@ impl DungeonGrid {
         }
 
         if !has_content {
-            return DungeonGrid::new(1, 1);
+            return (DungeonGrid::new(1, 1), GridCoord2D::new(0, 0));
         }
 
         // Apply padding and clamp to original bounds
@@ -251,7 +260,7 @@ impl DungeonGrid {
         // Recompute edge masks
         final_grid.compute_edge_masks();
 
-        final_grid
+        (final_grid, GridCoord2D::new(content_min_x, content_min_y))
     }
 }
 

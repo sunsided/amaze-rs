@@ -1,4 +1,6 @@
-use amaze::dungeon::{DungeonGrid, DungeonType, DungeonWalkGenerator, TileType};
+use amaze::dungeon::{
+    DungeonGrid, DungeonType, DungeonWalkGenerator, RoomCorridorGenerator, TileType,
+};
 #[cfg(feature = "generators-hex")]
 use amaze::generators::{AldousBroder6, GrowingTree6, MazeGenerator6D, RecursiveBacktracker6};
 use amaze::generators::{
@@ -92,7 +94,7 @@ fn main() {
                         .help("selects the dungeon type")
                         .display_order(0)
                         .default_value("rooms")
-                        .value_parser(["caverns", "rooms", "winding"])
+                        .value_parser(["caverns", "rooms", "winding", "chambers"])
                         .action(ArgAction::Set),
                 )
                 .arg(
@@ -348,28 +350,39 @@ fn main() {
             let dungeon_type_str = dungeon_matches
                 .get_one::<String>("type")
                 .expect("defaulted");
-            let dungeon_type = match dungeon_type_str.as_str() {
-                "caverns" => DungeonType::Caverns,
-                "rooms" => DungeonType::Rooms,
-                "winding" => DungeonType::Winding,
-                _ => unreachable!(),
-            };
 
-            let dungeon = DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
-                .with_winding_probability(winding_probability)
-                .with_long_walk_range(long_walk_min, long_walk_max)
-                .with_dynamic_resize(*dungeon_matches.get_one::<bool>("dynamic").unwrap_or(&false))
-                .with_initial_grid_size(
-                    *dungeon_matches
-                        .get_one::<usize>("initial-size")
-                        .unwrap_or(&32),
-                )
-                .with_trim_padding(
-                    *dungeon_matches
-                        .get_one::<usize>("trim-padding")
-                        .unwrap_or(&0),
-                )
-                .generate(width, height, floor_count);
+            let trim_padding = *dungeon_matches
+                .get_one::<usize>("trim-padding")
+                .unwrap_or(&0);
+
+            // Chambers uses the placement-based RoomCorridorGenerator; the other
+            // types use the walk-based DungeonWalkGenerator.
+            let dungeon = if dungeon_type_str == "chambers" {
+                RoomCorridorGenerator::new_from_seed(seed)
+                    .with_trim_padding(trim_padding)
+                    .generate(width, height)
+            } else {
+                let dungeon_type = match dungeon_type_str.as_str() {
+                    "caverns" => DungeonType::Caverns,
+                    "rooms" => DungeonType::Rooms,
+                    "winding" => DungeonType::Winding,
+                    _ => unreachable!(),
+                };
+
+                DungeonWalkGenerator::new_from_seed(dungeon_type, seed)
+                    .with_winding_probability(winding_probability)
+                    .with_long_walk_range(long_walk_min, long_walk_max)
+                    .with_dynamic_resize(
+                        *dungeon_matches.get_one::<bool>("dynamic").unwrap_or(&false),
+                    )
+                    .with_initial_grid_size(
+                        *dungeon_matches
+                            .get_one::<usize>("initial-size")
+                            .unwrap_or(&32),
+                    )
+                    .with_trim_padding(trim_padding)
+                    .generate(width, height, floor_count)
+            };
 
             println!("{}", render_dungeon(&dungeon));
         }

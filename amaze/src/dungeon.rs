@@ -8,6 +8,7 @@ mod dungeon_grid;
 mod dungeon_type;
 mod dyn_dungeon_grid;
 pub mod generators;
+pub mod room_corridor;
 #[cfg(all(feature = "representations", feature = "solvers"))]
 pub mod solvers;
 mod tile_type;
@@ -19,6 +20,7 @@ pub use generators::{
     DungeonGenerationStep, DungeonGenerationSteps, DungeonGenerationVisitor, DungeonGenerator,
     DungeonWalkGenerator, VecDungeonGenerationVisitor,
 };
+pub use room_corridor::{RoomCorridorGenerator, RoomTag};
 #[cfg(all(feature = "representations", feature = "solvers"))]
 pub use solvers::{solve_astar, solve_bfs};
 pub use tile_type::TileType;

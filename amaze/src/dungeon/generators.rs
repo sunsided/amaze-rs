@@ -1,5 +1,6 @@
 use crate::dungeon::{DungeonGrid, DungeonType, DynDungeonGrid, TileType};
 use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D};
+use crate::grid_rect::GridRect;
 use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
@@ -16,6 +17,10 @@ pub enum DungeonGenerationStep {
         half_width: usize,
         half_height: usize,
     },
+    /// A non-overlapping room was placed (Chambers generation)
+    PlaceRoom { rect: GridRect },
+    /// A corridor connecting two rooms was placed (Chambers generation)
+    PlaceCorridor { rect: GridRect },
     /// A wall was placed
     PlaceWall { coord: GridCoord2D },
     /// Exit position was set
@@ -331,7 +336,9 @@ impl DungeonWalkGenerator {
                         last_floor_pos = walker_pos;
                     }
                 }
-                DungeonType::Rooms | DungeonType::Winding => {
+                // Chambers is produced by RoomCorridorGenerator; if it ever
+                // reaches the walk generator, fall back to Rooms-style stamping.
+                DungeonType::Rooms | DungeonType::Winding | DungeonType::Chambers => {
                     let mut ctx = WalkContext {
                         rng,
                         grid: &mut grid,
@@ -343,11 +350,11 @@ impl DungeonWalkGenerator {
 
                     walker_pos = self.take_long_walk(&mut ctx, walker_pos, target_floor_count);
 
-                    let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
-                        true
-                    } else {
+                    let should_stamp_room = if self.dungeon_type == DungeonType::Winding {
                         let roll = ctx.rng.random_range(0..100);
                         roll > self.winding_hall_probability
+                    } else {
+                        true
                     };
 
                     if should_stamp_room && ctx.grid.floor_count() < target_floor_count {
@@ -449,7 +456,9 @@ impl DungeonWalkGenerator {
                         last_floor_world = walker_world;
                     }
                 }
-                DungeonType::Rooms | DungeonType::Winding => {
+                // Chambers is produced by RoomCorridorGenerator; if it ever
+                // reaches the walk generator, fall back to Rooms-style stamping.
+                DungeonType::Rooms | DungeonType::Winding | DungeonType::Chambers => {
                     let mut ctx = DynWalkContext {
                         rng,
                         dyn_grid: &mut dyn_grid,
@@ -461,11 +470,11 @@ impl DungeonWalkGenerator {
                     walker_world =
                         self.take_long_walk_world(&mut ctx, walker_world, target_floor_count);
 
-                    let should_stamp_room = if self.dungeon_type == DungeonType::Rooms {
-                        true
-                    } else {
+                    let should_stamp_room = if self.dungeon_type == DungeonType::Winding {
                         let roll = ctx.rng.random_range(0..100);
                         roll > self.winding_hall_probability
+                    } else {
+                        true
                     };
 
                     if should_stamp_room && ctx.dyn_grid.inner().floor_count() < target_floor_count

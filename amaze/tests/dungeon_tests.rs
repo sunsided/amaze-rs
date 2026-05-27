@@ -2,7 +2,10 @@
 
 #![cfg(all(feature = "representations", feature = "solvers"))]
 
-use amaze::dungeon::{DungeonType, DungeonWalkGenerator, solve_astar, solve_bfs};
+use amaze::direction4::Direction4;
+use amaze::dungeon::{
+    DungeonType, DungeonWalkGenerator, RoomCorridorGenerator, solve_astar, solve_bfs,
+};
 use amaze::preamble::*;
 use std::collections::{HashSet, VecDeque};
 
@@ -71,6 +74,82 @@ fn test_winding_connectivity() {
 
     assert_fully_connected(&dungeon);
     assert!(dungeon.exit().is_some());
+}
+
+#[test]
+fn test_chambers_connectivity() {
+    let generator = RoomCorridorGenerator::new_from_seed(42);
+    let dungeon = generator.generate(60, 60);
+
+    // Every room must be reachable from the entrance through its corridors.
+    assert_fully_connected(&dungeon);
+    assert!(dungeon.exit().is_some());
+}
+
+#[test]
+fn test_chambers_bfs_finds_path_to_exit() {
+    let generator = RoomCorridorGenerator::new_from_seed(7);
+    let dungeon = generator.generate(60, 60);
+
+    let passability = PassabilityGrid::from(&dungeon);
+    let (ex, ey) = passability.entrance_position();
+    let (xx, xy) = passability.exit_position();
+
+    let path = solve_bfs(
+        &passability,
+        GridCoord2D::new(ex, ey),
+        GridCoord2D::new(xx, xy),
+    );
+    assert!(
+        path.is_some(),
+        "BFS should reach the exit in a chambers dungeon"
+    );
+}
+
+#[test]
+fn test_chambers_graph_matches_doors() {
+    let generator = RoomCorridorGenerator::new_from_seed(123).with_room_count_range(5, 5);
+    let (_dungeon, graph) = generator.generate_with_graph(80, 80);
+
+    assert!(!graph.is_empty(), "chambers graph should contain rooms");
+
+    // Every linked neighbour is reciprocated in the opposite direction, and
+    // every non-isolated room exposes at least one door.
+    for room in graph.iter() {
+        let mut has_door = false;
+        for dir in [
+            Direction4::NORTH,
+            Direction4::SOUTH,
+            Direction4::EAST,
+            Direction4::WEST,
+        ] {
+            if let Some(neighbor) = room.get_neighbor(dir) {
+                has_door = true;
+                assert_eq!(
+                    graph[neighbor].get_neighbor(dir.opposite()),
+                    Some(room.index()),
+                    "neighbour link not reciprocated"
+                );
+            }
+        }
+        // A connected chain of >1 rooms leaves no isolated nodes.
+        assert!(
+            has_door || graph.len() == 1,
+            "room {:?} is isolated",
+            room.index()
+        );
+    }
+}
+
+#[test]
+fn test_chambers_same_seed_is_deterministic() {
+    let d1 = RoomCorridorGenerator::new_from_seed(999).generate(60, 60);
+    let d2 = RoomCorridorGenerator::new_from_seed(999).generate(60, 60);
+
+    let floors1: HashSet<_> = d1.floor_iter().collect();
+    let floors2: HashSet<_> = d2.floor_iter().collect();
+    assert_eq!(floors1, floors2);
+    assert_eq!(d1.exit(), d2.exit());
 }
 
 #[test]
