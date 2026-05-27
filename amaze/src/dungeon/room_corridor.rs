@@ -145,7 +145,7 @@ impl RoomCorridorGenerator {
 
     /// Generate a dungeon of discrete rooms joined by corridors.
     pub fn generate(&self, width: usize, height: usize) -> DungeonGrid {
-        let (grid, _layout) = self.build(width, height);
+        let (grid, _layout, _offset) = self.build(width, height);
         grid
     }
 
@@ -159,28 +159,40 @@ impl RoomCorridorGenerator {
         width: usize,
         height: usize,
     ) -> (DungeonGrid, Room4List<RoomTag>) {
-        let (grid, layout) = self.build(width, height);
+        let (grid, layout, _offset) = self.build(width, height);
         let graph = build_graph(&layout);
         (grid, graph)
     }
 
     /// Generate with step-by-step events for animation.
+    ///
+    /// Step coordinates are in the same space as the [`DungeonGrid`] returned by
+    /// [`generate`](Self::generate): rooms, corridors and the exit are rebased
+    /// onto the trimmed grid, so replaying the steps lines up with the final
+    /// dungeon even when `trim_padding` is non-zero.
     pub fn generate_steps(&self, width: usize, height: usize) -> DungeonGenerationSteps {
         let mut visitor = VecDungeonGenerationVisitor::default();
-        let (_grid, layout) = self.build(width, height);
+        let (grid, layout, offset) = self.build(width, height);
+
+        // Map a layout-space rectangle into the trimmed grid's coordinate space.
+        let rebase = |r: &GridRect| {
+            GridRect::new(
+                GridCoord2D::new(r.origin.x - offset.x, r.origin.y - offset.y),
+                r.width,
+                r.height,
+            )
+        };
 
         for (i, room) in layout.rooms.iter().enumerate() {
-            visitor.on_step(&DungeonGenerationStep::PlaceRoom { rect: *room });
+            visitor.on_step(&DungeonGenerationStep::PlaceRoom { rect: rebase(room) });
             if i < layout.corridors.len() {
                 visitor.on_step(&DungeonGenerationStep::PlaceCorridor {
-                    rect: layout.corridors[i],
+                    rect: rebase(&layout.corridors[i]),
                 });
             }
         }
-        if let Some(last) = layout.rooms.last() {
-            visitor.on_step(&DungeonGenerationStep::SetExit {
-                coord: last.center(),
-            });
+        if let Some(exit) = grid.exit() {
+            visitor.on_step(&DungeonGenerationStep::SetExit { coord: exit });
         }
         visitor.on_step(&DungeonGenerationStep::Complete);
 
@@ -188,7 +200,10 @@ impl RoomCorridorGenerator {
     }
 
     /// Run the placement algorithm and rasterize it into a trimmed grid.
-    fn build(&self, width: usize, height: usize) -> (DungeonGrid, Layout) {
+    ///
+    /// Returns the trimmed grid, the (untrimmed) layout, and the trim offset:
+    /// subtracting the offset from a layout coordinate maps it into the grid.
+    fn build(&self, width: usize, height: usize) -> (DungeonGrid, Layout, GridCoord2D) {
         let mut rng = StdRng::seed_from_u64(self.rng_seed);
 
         if width == 0 || height == 0 {
@@ -199,6 +214,7 @@ impl RoomCorridorGenerator {
                     corridors: Vec::new(),
                     dirs: Vec::new(),
                 },
+                GridCoord2D::new(0, 0),
             );
         }
 
@@ -217,8 +233,8 @@ impl RoomCorridorGenerator {
         }
 
         // Reuse the shared trim -> place_walls -> compute_edge_masks pipeline.
-        let grid = grid.trim(self.trim_padding);
-        (grid, layout)
+        let (grid, offset) = grid.trim_with_offset(self.trim_padding);
+        (grid, layout, offset)
     }
 
     /// Port of dungen-unity's `DungeonGenerator.asBoard`: place a first room,
@@ -233,8 +249,8 @@ impl RoomCorridorGenerator {
 
         // First room: placed at a random in-bounds position.
         let (rw, rh) = self.sample_room_size(rng, width, height);
-        let ox = rng.random_range(0..(width - rw + 1));
-        let oy = rng.random_range(0..(height - rh + 1));
+        let ox = rng.random_range(0..=(width - rw));
+        let oy = rng.random_range(0..=(height - rh));
         rooms.push(GridRect::new(GridCoord2D::new(ox, oy), rw, rh));
 
         let cardinals = Direction4::CARDINALS; // [N, E, S, W]
@@ -428,7 +444,7 @@ impl RoomCorridorGenerator {
 
 /// Sample an inclusive range `[min, max]`.
 fn sample(rng: &mut StdRng, min: usize, max: usize) -> usize {
-    rng.random_range(min..max + 1)
+    rng.random_range(min..=max)
 }
 
 /// Pick a corridor origin so a `thickness`-wide corridor lies within the room
@@ -439,7 +455,7 @@ fn pick_in_room(rng: &mut StdRng, lo: usize, hi: usize, thickness: usize) -> Opt
     if max_origin < lo {
         return None;
     }
-    Some(rng.random_range(lo..max_origin + 1))
+    Some(rng.random_range(lo..=max_origin))
 }
 
 /// Pick a room origin so a `room_len`-long side fully covers the span `[lo, hi]`
@@ -457,7 +473,7 @@ fn cover_span(
     if min_origin > max_origin {
         return None;
     }
-    Some(rng.random_range(min_origin..max_origin + 1))
+    Some(rng.random_range(min_origin..=max_origin))
 }
 
 /// Build the room connectivity graph from a placement layout.
@@ -541,6 +557,31 @@ mod tests {
         let f2: std::collections::HashSet<_> = g2.floor_iter().collect();
         assert_eq!(f1, f2);
         assert_eq!(g1.exit(), g2.exit());
+    }
+
+    #[test]
+    fn steps_are_in_trimmed_grid_space() {
+        // Step rects/exit must fall inside the bounds of the grid generate()
+        // returns, even with non-zero trim padding.
+        let generator = RoomCorridorGenerator::new_from_seed(42).with_trim_padding(2);
+        let grid = generator.generate(60, 60);
+        let (w, h) = (grid.width(), grid.height());
+
+        for step in generator.generate_steps(60, 60) {
+            match step {
+                DungeonGenerationStep::PlaceRoom { rect }
+                | DungeonGenerationStep::PlaceCorridor { rect } => {
+                    assert!(
+                        rect.right() < w && rect.bottom() < h,
+                        "step rect {rect:?} outside trimmed grid {w}x{h}"
+                    );
+                }
+                DungeonGenerationStep::SetExit { coord } => {
+                    assert!(coord.x < w && coord.y < h, "exit {coord:?} outside grid");
+                }
+                _ => {}
+            }
+        }
     }
 
     #[test]

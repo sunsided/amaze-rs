@@ -22,8 +22,17 @@ pub struct GridRect {
 
 impl GridRect {
     /// Create a new rectangle from its top-left origin and dimensions.
+    ///
+    /// # Panics
+    /// Panics if `width` or `height` is `0`. A zero-sized rectangle has no
+    /// valid `right`/`bottom` edge and would underflow the inclusive-bounds
+    /// arithmetic the rest of the type relies on.
     #[inline]
     pub fn new(origin: GridCoord2D, width: usize, height: usize) -> Self {
+        assert!(
+            width > 0 && height > 0,
+            "GridRect dimensions must be non-zero (got {width}x{height})"
+        );
         Self {
             origin,
             width,
@@ -67,12 +76,13 @@ impl GridRect {
         GridCoord2D::new(self.right(), self.bottom())
     }
 
-    /// The (rounded-down) center cell of the rectangle.
+    /// The center cell of the rectangle, rounding down for even dimensions
+    /// (i.e. the floor of the midpoint between the left/right and top/bottom edges).
     #[inline]
     pub fn center(&self) -> GridCoord2D {
         GridCoord2D::new(
-            self.origin.x + self.width / 2,
-            self.origin.y + self.height / 2,
+            (self.left() + self.right()) / 2,
+            (self.top() + self.bottom()) / 2,
         )
     }
 
@@ -145,7 +155,16 @@ mod tests {
         assert_eq!(r.bottom(), 4);
         assert_eq!(r.top_left(), GridCoord2D::new(2, 3));
         assert_eq!(r.bottom_right(), GridCoord2D::new(5, 4));
-        assert_eq!(r.center(), GridCoord2D::new(4, 4));
+        // Floor of the midpoint: x=(2+5)/2=3, y=(3+4)/2=3.
+        assert_eq!(r.center(), GridCoord2D::new(3, 3));
+        // Odd dimensions land on the true middle cell.
+        assert_eq!(rect(0, 0, 3, 3).center(), GridCoord2D::new(1, 1));
+    }
+
+    #[test]
+    #[should_panic(expected = "non-zero")]
+    fn new_rejects_zero_dimensions() {
+        let _ = rect(0, 0, 0, 4);
     }
 
     #[test]
