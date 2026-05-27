@@ -8,6 +8,8 @@ pub enum DungeonType {
     Rooms,
     /// Winding corridors with probabilistic room suppression
     Winding,
+    /// Discrete, non-overlapping rooms joined by explicit corridors
+    Chambers,
 }
 
 impl DungeonType {
@@ -17,6 +19,7 @@ impl DungeonType {
             DungeonType::Caverns => "Caverns",
             DungeonType::Rooms => "Rooms",
             DungeonType::Winding => "Winding",
+            DungeonType::Chambers => "Chambers",
         }
     }
 
@@ -26,6 +29,7 @@ impl DungeonType {
             DungeonType::Caverns => "Unconstrained random walk creating organic caverns",
             DungeonType::Rooms => "Long corridors connecting rectangular rooms",
             DungeonType::Winding => "Winding corridors with occasional rooms",
+            DungeonType::Chambers => "Discrete rooms joined by corridors",
         }
     }
 }
