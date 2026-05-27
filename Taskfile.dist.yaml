@@ -6,45 +6,62 @@ vars:
   DEFAULT_SEED: "1337"
   DEFAULT_WIDTH: "18"
   DEFAULT_HEIGHT: "24"
+  DUNGEON_TYPE: chambers
+  DUNGEON_WIDTH: "50"
+  DUNGEON_HEIGHT: "30"
 
 tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list --sort=none
+    silent: true
+
   fmt:
     desc: Format the code
+    aliases:
+      - format
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
+      - &cargo
+        sh: command -v cargo >/dev/null 2>&1
         msg: cargo is not installed. Please install Rust via https://rustup.rs
     cmds:
       - cargo fmt
 
+  fmt:check:
+    desc: Check formatting without modifying files
+    preconditions:
+      - *cargo
+    cmds:
+      - cargo fmt --check
+
   lint:
     desc: Lint the code
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
-      - cargo clippy
+      - cargo clippy --workspace --all-targets
 
   lint:fix:
-    desc: Lint the code
+    desc: Lint the code and apply fixes
+    aliases:
+      - fix
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
-      - cargo clippy --fix --allow-staged
+      - cargo clippy --fix --allow-staged --workspace --all-targets
 
   test:
     desc: Run all tests
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
-      - cargo test -p amaze
+      - cargo test --workspace {{.CLI_ARGS}}
 
   build:
     desc: Build the workspace
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     sources:
       - Cargo.lock
       - Cargo.toml
@@ -60,6 +77,28 @@ tasks:
     cmds:
       - cargo build
 
+  check:
+    desc: Run all static checks (format + lint)
+    cmds:
+      - task: fmt:check
+      - task: lint
+
+  ci:
+    desc: Run the full CI sequence (checks, tests, build)
+    cmds:
+      - task: check
+      - task: test
+      - task: build
+
+  clean:
+    desc: Remove build output
+    preconditions:
+      - *cargo
+    status:
+      - test ! -d target
+    cmds:
+      - cargo clean
+
   run:
     desc: Show the maze GUI
     aliases:
@@ -68,8 +107,7 @@ tasks:
       - show-gui
       - example:gui
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - cargo run --release --bin amaze-gui
 
@@ -80,8 +118,7 @@ tasks:
       - terminal
       - example:cli
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - >-
         cargo run --bin amaze-cli -- gen
@@ -90,6 +127,21 @@ tasks:
         --height {{default .DEFAULT_HEIGHT .HEIGHT}}
         --style {{default .DEFAULT_STYLE .STYLE}}
 
+  run:dungeon:
+    desc: Render a dungeon in terminal output
+    aliases:
+      - dungeon
+      - example:dungeon
+    preconditions:
+      - *cargo
+    cmds:
+      - >-
+        cargo run --bin amaze-cli -- gen-dungeon
+        --type {{default .DUNGEON_TYPE .TYPE}}
+        --seed {{default .DEFAULT_SEED .SEED}}
+        --width {{default .DUNGEON_WIDTH .WIDTH}}
+        --height {{default .DUNGEON_HEIGHT .HEIGHT}}
+
   run:ppm:
     desc: Render a maze in PPM format
     aliases:
@@ -97,8 +149,7 @@ tasks:
       - example:ppm
       - show-example-ppm
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - >-
         cargo run --bin amaze-cli -- gen
@@ -114,8 +165,7 @@ tasks:
       - example:pbm
       - show-example-pbm
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - >-
         cargo run --bin amaze-cli -- gen
@@ -129,8 +179,7 @@ tasks:
     aliases:
       - doc
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - "cargo doc --no-deps --all-features"
 
@@ -139,7 +188,6 @@ tasks:
     aliases:
       - doc:open
     preconditions:
-      - sh: command -v cargo >/dev/null 2>&1
-        msg: cargo is not installed. Please install Rust via https://rustup.rs
+      - *cargo
     cmds:
       - "cargo doc --no-deps --all-features --open"
