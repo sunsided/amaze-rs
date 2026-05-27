@@ -82,6 +82,7 @@ pub mod direction6;
 pub mod dungeon;
 pub mod generators;
 mod grid_coord_2d;
+pub mod grid_rect;
 mod hex_coord;
 pub mod path;
 #[cfg(feature = "representations")]
@@ -109,6 +110,7 @@ pub mod preamble {
     pub use crate::direction6::{Direction6, Direction6Iterator};
     pub use crate::dungeon::{DungeonGrid, DungeonType, TileType};
     pub use crate::grid_coord_2d::{GetCoordinateBounds2D, GridCoord2D, LinearizeCoords2D};
+    pub use crate::grid_rect::GridRect;
     pub use crate::hex_coord::HexCoord;
     pub use crate::path::Path;
     #[cfg(feature = "representations")]
