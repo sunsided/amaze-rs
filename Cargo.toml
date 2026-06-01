@@ -8,7 +8,7 @@ default-members = ["amaze-cli", "amaze-gui"]
 amaze = { path = "amaze" }
 clap = "4.6.1"
 criterion = "0.8"
-eframe = "0.34.1"
+eframe = "0.34.3"
 egui = "0.34.1"
 
 # Dev dependencies
