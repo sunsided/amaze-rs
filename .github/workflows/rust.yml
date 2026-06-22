@@ -17,7 +17,7 @@ jobs:
         toolchain: [stable, 1.92.0]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -40,7 +40,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +55,7 @@ jobs:
         run: cargo-sbom --output-format=spdx_json_2_3 > sbom.json
 
       - name: Upload SBOM as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.json
